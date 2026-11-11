@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0b12">
+  <title>MedipolDate</title>
+  <meta name="description" content="Ankara Medipol Üniversitesi öğrencileri için anonim eşleşme ve sohbet.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f43f5e'%3E%3Cpath d='M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 5 6.4 5c2 0 3.4 1.1 4.1 2.3L12 9.2l1.5-1.9C14.2 6.1 15.6 5 17.6 5c3.4 0 5.5 3.4 4 6.8C19.5 16.4 12 21 12 21z'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="bg-orbs" aria-hidden="true"><span class="orb o1"></span><span class="orb o2"></span><span class="orb o3"></span></div>
+  <div id="app" class="app">
+    <header class="topbar" id="topbar" hidden>
+      <div class="brand"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 5 6.4 5c2 0 3.4 1.1 4.1 2.3L12 9.2l1.5-1.9C14.2 6.1 15.6 5 17.6 5c3.4 0 5.5 3.4 4 6.8C19.5 16.4 12 21 12 21z"/></svg></span><span class="brand-text">Medipol<em>Date</em></span></div>
+      <div class="topbar-right" id="topbar-right"></div>
+    </header>
+
+    <main class="views" id="views">
+      <section class="view view-auth" data-view="auth"></section>
+      <section class="view view-profile" data-view="profile"></section>
+      <section class="view view-discover" data-view="discover"></section>
+      <section class="view view-matches" data-view="matches"></section>
+      <section class="view view-chat" data-view="chat"></section>
+    </main>
+
+    <nav class="tabbar" id="tabbar" hidden>
+      <button class="tab" data-tab="discover"><svg viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg><span>Keşfet</span></button>
+      <button class="tab" data-tab="matches"><svg viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg><span>Sohbet</span><span class="tab-badge" id="unread-badge" hidden></span></button>
+      <button class="tab" data-tab="profile"><svg viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profil</span></button>
+    </nav>
+
+    <div class="toast-host" id="toasts"></div>
+    <div class="modal-host" id="modal" hidden></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

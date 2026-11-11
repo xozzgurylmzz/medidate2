@@ -1,2 +1,3 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Linux sunucuda çalışan betikler bozulmasın diye tüm metin dosyaları LF satır sonuyla tutulur
+* text=auto eol=lf
+*.svg text eol=lf
