@@ -70,7 +70,12 @@ export const SOCIALS = [
 ];
 
 // DiceBear "Lorelei" (Lisa Wischofsky, CC0) – public/avatars/<id>.svg
-export const AVATARS = Array.from({ length: 48 }, (_, i) => `a${String(i + 1).padStart(2, '0')}`);
+const range = (prefix, n) => Array.from({ length: n }, (_, i) => `${prefix}${String(i + 1).padStart(2, '0')}`);
+// Seçilebilir setler: kadın (f01-f24) ve erkek (m01-m24) avatarlar
+export const FEMALE_AVATARS = range('f', 24);
+export const MALE_AVATARS = range('m', 24);
+// a01-a48: eski karışık set; mevcut kullanıcıların avatarı bozulmasın diye geçerli kalır
+export const AVATARS = [...FEMALE_AVATARS, ...MALE_AVATARS, ...range('a', 48)];
 
 export const AVATAR_COLORS = [
   '#f43f5e', '#fb7185', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#14b8a6', '#06b6d4',
@@ -87,7 +92,29 @@ export function randomNickname() {
   const n = NOUN[Math.floor(Math.random() * NOUN.length)];
   return `${a} ${n}`;
 }
-export const randomAvatar = () => AVATARS[Math.floor(Math.random() * AVATARS.length)];
+export const randomAvatar = (gender) => {
+  const pool = gender === 'kadin' ? FEMALE_AVATARS : gender === 'erkek' ? MALE_AVATARS : [...FEMALE_AVATARS, ...MALE_AVATARS];
+  return pool[Math.floor(Math.random() * pool.length)];
+};
+
+// Fiziksel özellikler (hepsi isteğe bağlı). Kilo sayı olarak değil, kelimeyle seçilir.
+export const HEIGHT_RANGE = { min: 140, max: 215 };
+export const BODY_TYPES = [
+  { id: 'zayif', label: 'Zayıf' },
+  { id: 'ince', label: 'İnce' },
+  { id: 'orta', label: 'Orta yapılı' },
+  { id: 'atletik', label: 'Atletik' },
+  { id: 'baliketli', label: 'Balıketli' },
+  { id: 'iri', label: 'İri yapılı' },
+];
+export const EYE_COLORS = [
+  { id: 'kahverengi', label: 'Kahverengi' }, { id: 'ela', label: 'Ela' }, { id: 'yesil', label: 'Yeşil' },
+  { id: 'mavi', label: 'Mavi' }, { id: 'gri', label: 'Gri' }, { id: 'siyah', label: 'Siyah' },
+];
+export const HAIR_COLORS = [
+  { id: 'siyah', label: 'Siyah' }, { id: 'kahverengi', label: 'Kahverengi' }, { id: 'kumral', label: 'Kumral' },
+  { id: 'sari', label: 'Sarı' }, { id: 'kizil', label: 'Kızıl' }, { id: 'boyali', label: 'Boyalı' }, { id: 'kel', label: 'Kel / çok kısa' },
+];
 export const randomColor = () => AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
 
 // ---------------------------------------------------------------- yeni özellikler
@@ -176,6 +203,8 @@ export function meta() {
   return {
     departments: DEPARTMENTS, interests: INTERESTS, prompts: PROMPTS, intents: INTENTS,
     genders: GENDERS, lookingFor: LOOKING_FOR, socials: SOCIALS, avatars: AVATARS, avatarColors: AVATAR_COLORS,
+    avatarsFemale: FEMALE_AVATARS, avatarsMale: MALE_AVATARS,
+    heightRange: HEIGHT_RANGE, bodyTypes: BODY_TYPES, eyeColors: EYE_COLORS, hairColors: HAIR_COLORS,
     limits: LIMITS, openerSuggestions: OPENER_SUGGESTIONS, thisOrThat: THIS_OR_THAT,
   };
 }

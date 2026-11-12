@@ -242,6 +242,7 @@
         ['Cinsiyet', GENDER[u.gender] || '—'], ['Aradığı', LOOK[u.looking_for] || '—'],
         ['Yaş', u.age || '—'], ['Bölüm', u.department || '—'], ['Niyet', INTENT[u.intent] || '—'],
         ['Kayıt', fmtDate(u.created_at)], ['Son görülme', u.online ? 'Şu an çevrimiçi' : fmtDate(u.last_seen)],
+        ['Profil doluluğu', `%${u.completeness ?? 0}`], ['Boy', u.height ? `${u.height} cm` : '—'],
         ['Aktif eşleşme', u.match_count], ['Gönderdiği mesaj', messagesSent],
         ['Uyarıya rağmen gönderilen', `${flaggedMessages ?? 0} mesaj`], ['Arkadaş modu', u.friend_mode ? 'Açık' : 'Kapalı'],
         ['Hakkında şikayet', u.report_count], ['Yaptığı şikayet', reportsMade],

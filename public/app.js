@@ -50,6 +50,10 @@
     scale: '<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10M12 3v18M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>',
     help: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>',
     unlock: '<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>',
+    pencil: '<path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z"/>',
+    calendar: '<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>',
+    ruler: '<path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2"/>',
+    person: '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>',
   };
   const ic = (name, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ''}</svg>`;
 
@@ -128,10 +132,11 @@
     const h = Math.floor(ms / 3600e3);
     return h >= 1 ? `${h} sa` : `${Math.max(1, Math.floor(ms / 60e3))} dk`;
   };
-  const displayName = (p) => (p.first_name ? `${p.first_name}${p.last_name ? ' ' + p.last_name : ''}` : p.nickname);
+  // Gerçek isim asla gösterilmez; herkes takma adıyla görünür (isim sadece karşılıklı kimlik açılınca, sohbet kartında).
+  const displayName = (p) => p?.nickname || '';
   const intentLabel = (id) => (state.meta.intents.find((i) => i.id === id) || {}).label || '';
   const socialDef = (id) => state.meta.socials.find((s) => s.id === id) || { id, label: id };
-  const avatarHTML = (p, cls = '') => `<div class="avatar ${cls}" style="background:${esc(p.avatar_color)}"><img src="/avatars/${esc(p.avatar)}.svg" alt="" draggable="false"></div>`;
+  const avatarHTML = (p, cls = '') => `<div class="avatar ${cls}" style="--av:${esc(p.avatar_color)}"><img src="/avatars/${esc(p.avatar)}.svg" alt="" draggable="false"></div>`;
   const siconHTML = (id, cls = 'brand') => `<span class="sicon ${cls}"><img src="/icons/${esc(id)}.svg" alt="${esc(socialDef(id).label)}"></span>`;
   function socialLink(platform, handle) {
     const h = encodeURIComponent(handle);
@@ -178,14 +183,15 @@
   function renderAuth() {
     const v = $('[data-view="auth"]');
     const m = state.authMode;
-    const collage = ['a07', 'a12', 'a03', 'a21', 'a30'].map((a, i) =>
-      `<div class="avatar" style="background:${state.meta.avatarColors[(i * 3) % state.meta.avatarColors.length]}"><img src="/avatars/${a}.svg" alt=""></div>`).join('');
+    const collage = ['f05', 'm03', 'f12', 'm09', 'f20'].map((a, i) =>
+      `<div class="avatar" style="--av:${state.meta.avatarColors[(i * 3) % state.meta.avatarColors.length]}"><img src="/avatars/${a}.svg" alt=""></div>`).join('');
     v.innerHTML = `
       <div class="auth-hero">
+        <div class="brand" style="margin-bottom:34px"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 5 6.4 5c2 0 3.4 1.1 4.1 2.3L12 9.2l1.5-1.9C14.2 6.1 15.6 5 17.6 5c3.4 0 5.5 3.4 4 6.8C19.5 16.4 12 21 12 21z"/></svg></span><span class="brand-text">Medipol<em>Date</em></span></div>
+        <div class="eyebrow">${ic('cap', 'sm')} Ankara Medipol'e özel</div>
+        <h1><span>tanış.</span><span class="blur">eşleş.</span><span>konuş<em>.</em></span></h1>
+        <p>Fotoğrafsız ve anonim. Gerçek ismin, sen sohbette açmaya karar verene kadar kimseye görünmez.</p>
         <div class="collage">${collage}</div>
-        <div class="eyebrow">${ic('cap')} Ankara Medipol'e özel</div>
-        <h1>Medipol<em>Date</em></h1>
-        <p>Fotoğrafsız, anonim ve sadece kampüs. Tanış, eşleş, sohbet et.</p>
       </div>
       <div class="auth-tabs">
         <button class="${m === 'login' ? 'on' : ''}" data-mode="login">Giriş yap</button>
@@ -205,9 +211,9 @@
       </form>
       ${m === 'register' ? `
       <div class="features">
-        <div class="feature"><span class="fi warm">${ic('eyeOff')}</span><div><b>Fotoğraf yok, tamamen anonim</b>Bir avatar ve takma adla görünürsün. İsim, yaş ve bölüm isteğe bağlı.</div></div>
-        <div class="feature"><span class="fi">${ic('unlock')}</span><div><b>Hazır olunca birlikte açılın</b>İkiniz de isterseniz isim ve sosyal medya aynı anda açılır.</div></div>
-        <div class="feature"><span class="fi warm">${ic('users')}</span><div><b>Flört ya da arkadaşlık</b>İki ayrı mod: kampüste sevgili de, ders arkadaşı da bulabilirsin.</div></div>
+        <div class="feature"><span class="fi warm">${ic('eyeOff', 'sm')}</span><div><b>Fotoğraf yok, isim yok</b>Bir çizim avatar ve takma adla görünürsün. Gerçek adın gizli kalır.</div></div>
+        <div class="feature"><span class="fi">${ic('unlock', 'sm')}</span><div><b>Hazır olunca birlikte açılın</b>İkiniz de isterseniz isim ve sosyal medya aynı anda açılır.</div></div>
+        <div class="feature"><span class="fi">${ic('users', 'sm')}</span><div><b>Flört ya da arkadaşlık</b>İki ayrı mod: kampüste sevgili de, ders arkadaşı da bulabilirsin.</div></div>
       </div>` : ''}`;
 
     $$('[data-mode]', v).forEach((b) => b.onclick = () => { state.authMode = b.dataset.mode; renderAuth(); });
@@ -232,10 +238,12 @@
     state.user = user;
     startPolling();
     renderTopbar();
-    if (!user.profile_done) { showView('profile'); toast('Hoş geldin! Önce anonim profilini oluştur.'); return; }
-    await loadMatches();
+    if (user.profile_done) await loadMatches();
     const deep = Number(new URLSearchParams(location.search).get('match'));
-    if (deep) { history.replaceState(null, '', '/'); openChat(deep); } else showView('discover');
+    if (deep && user.profile_done) { history.replaceState(null, '', '/'); openChat(deep); return; }
+    // Girişten sonra her zaman profil sayfası açılır: doluluk oranı ve eksikler görünür
+    showView('profile');
+    if (!user.profile_done) toast('Hoş geldin. Önce anonim profilini oluştur.');
   }
 
   function renderTopbar() {
@@ -301,7 +309,35 @@
     } catch (ex) { fail(ex); }
   }
 
-  // ------------------------------------------------------------ profil düzenleme
+  // ------------------------------------------------------------ profil doluluğu
+  // Sunucudaki hesaplamanın aynısı (server/app.js → SCORE_ITEMS); yazarken canlı güncellenir.
+  // Kaydedilince sunucunun hesapladığı değer esas alınır.
+  const SCORE_ITEMS = [
+    { key: 'gender', label: 'Cinsiyet', pts: 5, sec: 'about', ok: (d) => !!d.gender },
+    { key: 'bio', label: 'Kendini anlat', pts: 15, sec: 'bio', ok: (d) => (d.bio || '').trim().length >= 20 },
+    { key: 'interests', label: 'En az 5 ilgi alanı', pts: 15, sec: 'interests', ok: (d) => (d.interests || []).length >= 5 },
+    { key: 'prompt1', label: '1. soru-cevap', pts: 7, sec: 'prompts', ok: (d) => filledPrompts(d) >= 1 },
+    { key: 'prompt2', label: '2. soru-cevap', pts: 7, sec: 'prompts', ok: (d) => filledPrompts(d) >= 2 },
+    { key: 'prompt3', label: '3. soru-cevap', pts: 7, sec: 'prompts', ok: (d) => filledPrompts(d) >= 3 },
+    { key: 'intent', label: 'Ne aradığın', pts: 6, sec: 'bio', ok: (d) => !!d.intent },
+    { key: 'opener', label: 'Açılış sorusu', pts: 6, sec: 'opener', ok: (d) => !!(d.opening_question || '').trim() },
+    { key: 'department', label: 'Bölüm', pts: 6, sec: 'about', ok: (d) => !!(d.department || '').trim() },
+    { key: 'age', label: 'Yaş', pts: 5, sec: 'about', ok: (d) => !!d.age },
+    { key: 'height', label: 'Boy', pts: 5, sec: 'physical', ok: (d) => !!d.height },
+    { key: 'body', label: 'Vücut yapısı', pts: 5, sec: 'physical', ok: (d) => !!d.body_type },
+    { key: 'socials', label: 'Bir sosyal medya hesabı', pts: 5, sec: 'socials', ok: (d) => Object.values(d.socials || {}).some((v) => (v || '').trim()) },
+    { key: 'eyes', label: 'Göz rengi', pts: 3, sec: 'physical', ok: (d) => !!d.eye_color },
+    { key: 'hair', label: 'Saç rengi', pts: 3, sec: 'physical', ok: (d) => !!d.hair_color },
+  ];
+  function filledPrompts(d) { return (d.prompts || []).filter((p) => p.q && (p.a || '').trim()).length; }
+  function computeCompleteness(d) {
+    let percent = 0; const missing = [];
+    for (const it of SCORE_ITEMS) { if (it.ok(d)) percent += it.pts; else missing.push(it); }
+    return { percent, missing: missing.sort((a, b) => b.pts - a.pts) };
+  }
+  const labelOf = (list, id) => (list.find((x) => x.id === id) || {}).label || '';
+
+  // ------------------------------------------------------------ profil sayfası
   function renderProfile() {
     const v = $('[data-view="profile"]');
     const M = state.meta; const u = state.user;
@@ -311,75 +347,99 @@
       gender: u.gender || '', looking_for: u.looking_for || 'herkes', intent: u.intent || '', bio: u.bio || '',
       interests: [...(u.interests || [])], prompts: [...(u.prompts || [])], socials: { ...(u.socials || {}) },
       friend_mode: !!u.friend_mode, opening_question: u.opening_question || '',
+      height: u.height ?? '', body_type: u.body_type || '', eye_color: u.eye_color || '', hair_color: u.hair_color || '',
     };
     while (d.prompts.length < 3) d.prompts.push({ q: '', a: '' });
     const onboarding = !u.profile_done;
+    let avTab = String(d.avatar).startsWith('m') ? 'm' : String(d.avatar).startsWith('f') ? 'f' : d.gender === 'erkek' ? 'm' : 'f';
+    const avList = () => (avTab === 'm' ? M.avatarsMale : M.avatarsFemale);
+    const pillGroup = (id, list, val) => `<div class="pills" id="${id}">${list.map((x) => `<button type="button" class="pill ${val === x.id ? 'on' : ''}" data-v="${x.id}">${esc(x.label)}</button>`).join('')}</div>`;
 
     v.innerHTML = `
-      <div class="stack" style="padding-top:8px">
-        ${onboarding ? `<div class="card hero-card"><h2>Anonim profilini oluştur</h2><p>Sadece cinsiyet zorunlu. Ne kadar doldurursan eşleşmeler o kadar isabetli olur. Fotoğraf yok, kullanıcı adın kimseye görünmez.</p></div>` : ''}
+      <div class="stack" style="padding-top:6px">
+        ${onboarding ? `<div class="card hero-card"><h2>Anonim profilini oluştur</h2><p>Sadece cinsiyet zorunlu. Ne kadar doldurursan keşfette o kadar önde çıkarsın. Fotoğraf ve gerçek isim kimseye görünmez.</p></div>` : ''}
 
-        <div class="card stack">
+        <div class="card me-hero" id="p-summary"></div>
+
+        <div class="card stack" data-sec="identity">
           <h3>${ic('ghost')} Anonim kimliğin</h3>
-          <div class="profile-head">
-            ${avatarHTML(d, 'lg')}
-            <div class="row" style="width:100%">
-              <input class="input grow" id="p-nick" maxlength="30" placeholder="Takma ad" value="${esc(d.nickname)}">
-              <button class="btn btn-icon" id="p-nick-rand" title="Rastgele takma ad">${ic('dice')}</button>
+          <div class="row">
+            <input class="input grow" id="p-nick" maxlength="30" placeholder="Takma ad" value="${esc(d.nickname)}">
+            <button class="btn btn-icon" id="p-nick-rand" title="Rastgele takma ad">${ic('dice')}</button>
+          </div>
+          <div class="row" style="justify-content:space-between;margin-top:4px">
+            <div class="section-title" style="margin:0">Avatar</div>
+            <div class="seg neutral" id="p-avtab" style="width:180px">
+              <button type="button" data-t="f" class="${avTab === 'f' ? 'on' : ''}">Kadın</button>
+              <button type="button" data-t="m" class="${avTab === 'm' ? 'on' : ''}">Erkek</button>
             </div>
           </div>
-          <div class="section-title">Avatar</div>
-          <div class="avatar-grid" id="p-avatar">${M.avatars.map((a) => `<button type="button" data-a="${a}" class="${a === d.avatar ? 'on' : ''}" style="background:${esc(d.avatar_color)}"><img src="/avatars/${a}.svg" alt="" loading="lazy"></button>`).join('')}</div>
-          <div class="section-title">Renk</div>
+          <div class="avatar-grid" id="p-avatar"></div>
+          <div class="section-title" style="margin:6px 0 0">Kâğıt tonu</div>
           <div class="color-row" id="p-color">${M.avatarColors.map((c) => `<button type="button" data-c="${c}" style="background:${c}" class="${c === d.avatar_color ? 'on' : ''}" aria-label="${c}"></button>`).join('')}</div>
         </div>
 
-        <div class="card stack">
-          <h3>${ic('user')} Hakkında <span class="opt">isteğe bağlı alanlar</span></h3>
+        <div class="card stack" data-sec="real">
+          <h3>${ic('lock')} Gerçek kimliğin <span class="opt">gizli</span></h3>
+          <div class="note">${ic('shield', 'sm')}<span>Adın ve soyadın <b>keşfette, eşleşmede ve sohbette görünmez</b>. Sadece bir sohbette <b>karşılıklı kimlik açmayı</b> seçersen o kişiye gösterilir.</span></div>
           <div class="row">
-            <label class="field grow">Ad<input class="input" id="p-first" maxlength="40" value="${esc(d.first_name)}" placeholder="Boş bırakabilirsin"></label>
-            <label class="field grow">Soyad<input class="input" id="p-last" maxlength="40" value="${esc(d.last_name)}" placeholder="Boş bırakabilirsin"></label>
+            <label class="field grow">Ad<input class="input" id="p-first" maxlength="40" value="${esc(d.first_name)}" placeholder="İsteğe bağlı"></label>
+            <label class="field grow">Soyad<input class="input" id="p-last" maxlength="40" value="${esc(d.last_name)}" placeholder="İsteğe bağlı"></label>
           </div>
+        </div>
+
+        <div class="card stack" data-sec="about">
+          <h3>${ic('user')} Hakkında</h3>
+          <label class="field">Cinsiyetin <span class="req">zorunlu</span>
+            <div class="seg" id="p-gender">${M.genders.map((g) => `<button type="button" data-v="${g.id}" class="${d.gender === g.id ? 'on' : ''}">${esc(g.label)}</button>`).join('')}</div>
+          </label>
           <div class="row">
             <label class="field" style="width:96px">Yaş<input class="input" id="p-age" type="number" min="17" max="80" value="${esc(d.age)}" placeholder="—"></label>
             <label class="field grow">Bölüm<input class="input" id="p-dept" list="dept-list" maxlength="80" value="${esc(d.department)}" placeholder="Seç ya da yaz"><datalist id="dept-list">${M.departments.map((x) => `<option value="${esc(x)}">`).join('')}</datalist></label>
           </div>
-          <label class="field">Cinsiyetin <span class="req">* zorunlu</span>
-            <div class="seg" id="p-gender">${M.genders.map((g) => `<button type="button" data-v="${g.id}" class="${d.gender === g.id ? 'on' : ''}">${esc(g.label)}</button>`).join('')}</div>
-          </label>
           <label class="field">Flört modunda kimleri görmek istersin?
             <div class="seg neutral" id="p-look">${M.lookingFor.map((g) => `<button type="button" data-v="${g.id}" class="${d.looking_for === g.id ? 'on' : ''}">${esc(g.label)}</button>`).join('')}</div>
           </label>
         </div>
 
-        <div class="card stack">
+        <div class="card stack" data-sec="physical">
+          <h3>${ic('ruler')} Fiziksel özellikler <span class="opt">isteğe bağlı</span></h3>
+          <label class="field">Boy
+            <div class="input-suffix"><input class="input" id="p-height" type="number" inputmode="numeric" min="${M.heightRange.min}" max="${M.heightRange.max}" value="${esc(d.height)}" placeholder="Ör. 172"><span>cm</span></div>
+          </label>
+          <div class="field">Vücut yapısı ${pillGroup('p-body', M.bodyTypes, d.body_type)}</div>
+          <div class="field">Göz rengi ${pillGroup('p-eyes', M.eyeColors, d.eye_color)}</div>
+          <div class="field">Saç rengi ${pillGroup('p-hair', M.hairColors, d.hair_color)}</div>
+        </div>
+
+        <div class="card stack" data-sec="bio">
           <h3>${ic('sparkles')} Ne arıyorsun?</h3>
-          <div class="pills" id="p-intent">${M.intents.map((i) => `<button type="button" class="pill ${d.intent === i.id ? 'on' : ''}" data-v="${i.id}">${esc(i.label)}</button>`).join('')}</div>
+          ${pillGroup('p-intent', M.intents, d.intent)}
           <label class="field">Kendini anlat
             <textarea class="input" id="p-bio" maxlength="400" placeholder="Seni sen yapan şey ne? Kartında görünür.">${esc(d.bio)}</textarea>
             <div class="counter" id="p-bio-count"></div>
           </label>
           <div class="divider"></div>
           <div class="switch-row">
-            <div class="txt"><b>Arkadaş modunda da görün</b><span>Flört dışında ders arkadaşı, sohbet arkadaşı arayanların destesinde de çıkarsın. Cinsiyet tercihi bu modda uygulanmaz.</span></div>
+            <div class="txt"><b>Arkadaş modunda da görün</b><span>Ders arkadaşı, sohbet arkadaşı arayanların destesinde de çıkarsın. Bu modda cinsiyet tercihi uygulanmaz.</span></div>
             <label class="switch"><input type="checkbox" id="p-friend" ${d.friend_mode ? 'checked' : ''}><span class="slider"></span></label>
           </div>
         </div>
 
-        <div class="card stack">
+        <div class="card stack" data-sec="opener">
           <h3>${ic('msg')} Açılış sorusu</h3>
-          <div class="muted small">Eşleştiğin herkese ilk mesaj olarak bu soru gider. Karşı taraf cevaplayarak sohbeti başlatır, "selam nasılsın" derdi biter.</div>
+          <div class="muted small">Eşleştiğin herkese ilk mesaj olarak bu soru gider. Karşı taraf cevaplayarak sohbeti başlatır.</div>
           <input class="input" id="p-opener" maxlength="${M.limits.openerMax}" placeholder="Kendi sorunu yaz ya da aşağıdan seç" value="${esc(d.opening_question)}">
           <div class="pills" id="p-opener-sug">${M.openerSuggestions.map((q) => `<button type="button" class="pill" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
         </div>
 
-        <div class="card stack">
+        <div class="card stack" data-sec="interests">
           <h3>${ic('heart')} İlgi alanların <span class="opt">en fazla 12</span></h3>
           <div class="muted small">Ortak ilgi alanı olan kişiler sana daha önce gösterilir.</div>
           <div class="pills" id="p-interests">${M.interests.map((i) => `<button type="button" class="pill ${d.interests.includes(i) ? 'on' : ''}" data-v="${esc(i)}">${esc(i)}</button>`).join('')}</div>
         </div>
 
-        <div class="card stack">
+        <div class="card stack" data-sec="prompts">
           <h3>${ic('chat')} Sorular <span class="opt">en fazla 3</span></h3>
           <div class="muted small">Bir soru seç, kısa ve samimi cevapla. İnsanlar tek bir cevabını beğenip yorum yapabilir.</div>
           ${d.prompts.map((p, i) => `
@@ -389,13 +449,13 @@
             </div>`).join('')}
         </div>
 
-        <div class="card stack">
-          <h3>${ic('lock')} Sosyal medya hesapların</h3>
-          <div class="note">${ic('shield', 'sm')}<span>Bunlar <b>asla</b> profilinde görünmez. Sadece sohbette sen paylaşırsan ya da karşılıklı kimlik açtığınızda o kişiye gider.</span></div>
+        <div class="card stack" data-sec="socials">
+          <h3>${ic('lock')} Sosyal medya hesapların <span class="opt">gizli</span></h3>
+          <div class="note">${ic('shield', 'sm')}<span>Profilinde asla görünmez. Sadece sohbette sen paylaşırsan ya da karşılıklı kimlik açtığınızda o kişiye gider.</span></div>
           ${M.socials.map((s) => `<div class="social-row">${siconHTML(s.id, '')}<input class="input" data-s="${s.id}" maxlength="60" placeholder="${esc(s.label)} – ${esc(s.placeholder)}" value="${esc(d.socials[s.id] || '')}"></div>`).join('')}
         </div>
 
-        <div class="sticky-save"><button class="btn btn-primary btn-block" id="p-save">${onboarding ? 'Profili kaydet ve keşfetmeye başla' : 'Kaydet'}</button></div>
+        <div class="sticky-save"><button class="btn btn-primary btn-block" id="p-save">${onboarding ? 'Profili kaydet ve keşfetmeye başla' : 'Değişiklikleri kaydet'}</button></div>
         <div class="error center" id="p-err"></div>
 
         ${onboarding ? '' : `
@@ -408,7 +468,7 @@
         </div>
         <div class="card stack">
           <h3>${ic('user')} Hesap</h3>
-          <div class="muted small">Kullanıcı adı: <b>${esc(u.username)}</b></div>
+          <div class="muted small">Kullanıcı adı: <b style="color:var(--text)">${esc(u.username)}</b></div>
           <div class="row">
             <button class="btn grow" id="p-logout">${ic('logout', 'sm')} Çıkış yap</button>
             <button class="btn btn-danger grow" id="p-delete">${ic('trash', 'sm')} Hesabı sil</button>
@@ -416,53 +476,80 @@
         </div>`}
       </div>`;
 
-    const head = $('.profile-head .avatar', v);
-    const refreshHead = () => {
-      head.style.background = d.avatar_color; $('img', head).src = `/avatars/${d.avatar}.svg`;
-      $$('#p-avatar button', v).forEach((b) => { b.style.background = d.avatar_color; });
+    // --- özet kartı (doluluk halkası + eksikler)
+    const updateSummary = () => {
+      const c = computeCompleteness(d);
+      const lead = c.percent >= 100
+        ? 'Profilin tamamen dolu. Keşfette en önde çıkanlardansın.'
+        : `Profilin <b>%${c.percent}</b> dolu. Dolu profiller keşfette daha önde çıkar.`;
+      $('#p-summary', v).innerHTML = `
+        <div class="ring" style="--p:${c.percent}">${avatarHTML(d)}<span class="pct">%${c.percent}</span></div>
+        <div class="who"><div class="nick">${esc(d.nickname || 'Takma adın')}</div><div class="lead">${lead}</div></div>
+        ${c.missing.length ? `<div class="missing">${c.missing.slice(0, 6).map((m) => `<button type="button" data-sec="${m.sec}"><b>+%${m.pts}</b> ${esc(m.label)}</button>`).join('')}</div>` : ''}`;
     };
-    $('#p-nick', v).oninput = (e) => { d.nickname = e.target.value; };
+    $('#p-summary', v).onclick = (e) => {
+      const b = e.target.closest('[data-sec]'); if (!b) return;
+      const sec = $(`[data-sec="${b.dataset.sec}"].card`, v);
+      if (sec) { sec.scrollIntoView({ behavior: 'smooth', block: 'center' }); sec.classList.remove('flash'); void sec.offsetWidth; sec.classList.add('flash'); }
+    };
+
+    // --- avatar
+    const renderAvatars = () => {
+      $('#p-avatar', v).innerHTML = avList().map((a) => `<button type="button" data-a="${a}" class="${a === d.avatar ? 'on' : ''}" style="--av:${esc(d.avatar_color)}"><img src="/avatars/${a}.svg" alt="" loading="lazy"></button>`).join('');
+    };
+    renderAvatars();
+    $('#p-avtab', v).onclick = (e) => { const b = e.target.closest('[data-t]'); if (!b) return; avTab = b.dataset.t; $$('#p-avtab button', v).forEach((x) => x.classList.toggle('on', x === b)); renderAvatars(); };
+    $('#p-avatar', v).onclick = (e) => { const b = e.target.closest('button'); if (!b) return; d.avatar = b.dataset.a; $$('#p-avatar button', v).forEach((x) => x.classList.toggle('on', x === b)); updateSummary(); };
+    $('#p-color', v).onclick = (e) => { const b = e.target.closest('button'); if (!b) return; d.avatar_color = b.dataset.c; $$('button', e.currentTarget).forEach((x) => x.classList.toggle('on', x === b)); updateSummary(); };
+
+    $('#p-nick', v).oninput = (e) => { d.nickname = e.target.value; updateSummary(); };
     $('#p-nick-rand', v).onclick = () => {
       const adj = ['Gizemli', 'Neşeli', 'Sessiz', 'Meraklı', 'Uykulu', 'Cesur', 'Hayalperest', 'Sabahçı', 'Esprili', 'Romantik', 'Sakin', 'Çılgın'];
       const noun = ['Panda', 'Penguen', 'Tilki', 'Kedi', 'Baykuş', 'Yunus', 'Koala', 'Kaplan', 'Kirpi', 'Ahtapot', 'Flamingo', 'Rakun'];
-      d.nickname = `${adj[Math.random() * adj.length | 0]} ${noun[Math.random() * noun.length | 0]}`; $('#p-nick', v).value = d.nickname;
+      d.nickname = `${adj[Math.random() * adj.length | 0]} ${noun[Math.random() * noun.length | 0]}`; $('#p-nick', v).value = d.nickname; updateSummary();
     };
-    $('#p-avatar', v).onclick = (e) => { const b = e.target.closest('button'); if (!b) return; d.avatar = b.dataset.a; $$('button', e.currentTarget).forEach((x) => x.classList.toggle('on', x === b)); refreshHead(); };
-    $('#p-color', v).onclick = (e) => { const b = e.target.closest('button'); if (!b) return; d.avatar_color = b.dataset.c; $$('button', e.currentTarget).forEach((x) => x.classList.toggle('on', x === b)); refreshHead(); };
-    const seg = (id, key) => { $(id, v).onclick = (e) => { const b = e.target.closest('button'); if (!b) return; d[key] = b.dataset.v; $$('button', e.currentTarget).forEach((x) => x.classList.toggle('on', x === b)); }; };
-    seg('#p-gender', 'gender'); seg('#p-look', 'looking_for');
-    $('#p-intent', v).onclick = (e) => { const b = e.target.closest('button'); if (!b) return; d.intent = d.intent === b.dataset.v ? '' : b.dataset.v; $$('button', e.currentTarget).forEach((x) => x.classList.toggle('on', x.dataset.v === d.intent)); };
+    const seg = (id, key, after) => { $(id, v).onclick = (e) => { const b = e.target.closest('button'); if (!b) return; d[key] = b.dataset.v; $$('button', e.currentTarget).forEach((x) => x.classList.toggle('on', x === b)); after?.(); updateSummary(); }; };
+    seg('#p-gender', 'gender', () => {
+      // cinsiyet seçilince avatar sekmesi ona geçer (seçim zorunlu değil)
+      avTab = d.gender === 'erkek' ? 'm' : 'f';
+      $$('#p-avtab button', v).forEach((x) => x.classList.toggle('on', x.dataset.t === avTab)); renderAvatars();
+    });
+    seg('#p-look', 'looking_for');
+    // tekli seçim, tekrar dokununca temizlenir
+    const toggleGroup = (id, key) => { $(id, v).onclick = (e) => { const b = e.target.closest('button'); if (!b) return; d[key] = d[key] === b.dataset.v ? '' : b.dataset.v; $$('button', e.currentTarget).forEach((x) => x.classList.toggle('on', x.dataset.v === d[key])); updateSummary(); }; };
+    toggleGroup('#p-intent', 'intent'); toggleGroup('#p-body', 'body_type'); toggleGroup('#p-eyes', 'eye_color'); toggleGroup('#p-hair', 'hair_color');
     const bioCount = () => { $('#p-bio-count', v).textContent = `${d.bio.length}/400`; };
-    $('#p-bio', v).oninput = (e) => { d.bio = e.target.value; bioCount(); }; bioCount();
+    $('#p-bio', v).oninput = (e) => { d.bio = e.target.value; bioCount(); updateSummary(); }; bioCount();
     $('#p-friend', v).onchange = (e) => { d.friend_mode = e.target.checked; };
-    $('#p-opener', v).oninput = (e) => { d.opening_question = e.target.value; };
-    $('#p-opener-sug', v).onclick = (e) => { const b = e.target.closest('[data-q]'); if (!b) return; d.opening_question = b.dataset.q; $('#p-opener', v).value = b.dataset.q; };
+    $('#p-opener', v).oninput = (e) => { d.opening_question = e.target.value; updateSummary(); };
+    $('#p-opener-sug', v).onclick = (e) => { const b = e.target.closest('[data-q]'); if (!b) return; d.opening_question = b.dataset.q; $('#p-opener', v).value = b.dataset.q; updateSummary(); };
     $('#p-interests', v).onclick = (e) => {
       const b = e.target.closest('button'); if (!b) return;
       const val = b.dataset.v; const i = d.interests.indexOf(val);
       if (i >= 0) d.interests.splice(i, 1);
       else if (d.interests.length >= 12) return toast('En fazla 12 ilgi alanı seçebilirsin.');
       else d.interests.push(val);
-      b.classList.toggle('on', d.interests.includes(val));
+      b.classList.toggle('on', d.interests.includes(val)); updateSummary();
     };
-    $$('[data-pi]', v).forEach((s) => s.onchange = (e) => { d.prompts[+e.target.dataset.pi].q = e.target.value; });
-    $$('[data-pa]', v).forEach((s) => s.oninput = (e) => { d.prompts[+e.target.dataset.pa].a = e.target.value; });
-    $$('[data-s]', v).forEach((s) => s.oninput = (e) => { d.socials[e.target.dataset.s] = e.target.value; });
-    const simple = { '#p-first': 'first_name', '#p-last': 'last_name', '#p-age': 'age', '#p-dept': 'department' };
-    for (const [sel, key] of Object.entries(simple)) $(sel, v).oninput = (e) => { d[key] = e.target.value; };
+    $$('[data-pi]', v).forEach((s) => s.onchange = (e) => { d.prompts[+e.target.dataset.pi].q = e.target.value; updateSummary(); });
+    $$('[data-pa]', v).forEach((s) => s.oninput = (e) => { d.prompts[+e.target.dataset.pa].a = e.target.value; updateSummary(); });
+    $$('[data-s]', v).forEach((s) => s.oninput = (e) => { d.socials[e.target.dataset.s] = e.target.value; updateSummary(); });
+    const simple = { '#p-first': 'first_name', '#p-last': 'last_name', '#p-age': 'age', '#p-dept': 'department', '#p-height': 'height' };
+    for (const [sel, key] of Object.entries(simple)) $(sel, v).oninput = (e) => { d[key] = e.target.value; updateSummary(); };
+    updateSummary();
 
     $('#p-save', v).onclick = async () => {
       const btn = $('#p-save', v); const errEl = $('#p-err', v); errEl.textContent = '';
       if (!d.gender) { errEl.textContent = 'Cinsiyet seçimi zorunlu.'; $('#p-gender', v).scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
       btn.disabled = true;
       try {
-        const body = { ...d, prompts: d.prompts.filter((p) => p.q && p.a.trim()) };
+        const body = { ...d, prompts: d.prompts.filter((p) => p.q && p.a.trim()), height: d.height === '' ? null : Number(d.height) };
         const r = await api('/profile', { method: 'PUT', body });
         const first = !state.user.profile_done;
         state.user = r.user;
-        toast('Profil kaydedildi.', 'ok');
+        toast(`Profil kaydedildi. Doluluk %${r.user.completeness?.percent ?? computeCompleteness(d).percent}.`, 'ok');
         state.candidates = [];
-        if (first) { await loadMatches(); showView('discover'); }
+        if (first) { await loadMatches(); showView('discover'); } else updateSummary();
       } catch (ex) { errEl.textContent = ex.message; } finally { btn.disabled = false; }
     };
     const lo = $('#p-logout', v); if (lo) lo.onclick = logout;
@@ -495,7 +582,7 @@
     const off = $('#pn-off'); if (off) off.onclick = async () => { await disablePush(); renderNotifyCard(); };
     const test = $('#pn-test'); if (test) test.onclick = async () => { try { await api('/push/test', { body: {} }); toast('Test bildirimi gönderildi.', 'ok'); } catch (ex) { fail(ex); } };
 
-    if (isStandalone()) inst.innerHTML = `<div class="muted small">${ic('check', 'sm')} Uygulama olarak açıksın.</div>`;
+    if (isStandalone()) inst.innerHTML = `<div class="muted small">Uygulama olarak açıksın.</div>`;
     else if (state.installPrompt) {
       inst.innerHTML = `<button class="btn btn-sm" id="pn-install">${ic('download', 'sm')} Telefona uygulama olarak yükle</button>`;
       $('#pn-install').onclick = async () => { const p = state.installPrompt; state.installPrompt = null; p.prompt(); await p.userChoice.catch(() => {}); renderNotifyCard(); };
@@ -505,36 +592,47 @@
 
   // ------------------------------------------------------------ profil kartı (ortak)
   function profileCardHTML(p, shared = [], { interactive = false } = {}) {
-    const name = displayName(p);
-    const subBits = [];
-    if (p.first_name) subBits.push(`“${p.nickname}”`);
-    if (p.age) subBits.push(`${p.age}`);
-    if (p.department) subBits.push(p.department);
+    const M = state.meta;
     const sharedSet = new Set(shared);
     const interests = p.interests || [];
     const prompts = p.prompts || [];
     const likeBtn = (target) => (interactive ? `<button class="part-like" data-like="${esc(target)}" title="Bunu beğen ve yorum yap">${ic('heart')}</button>` : '');
     const lm = p.likedMe;
+    const info = [
+      `<span>${ic('cap')} ${esc(p.department || 'Ankara Medipol')}</span>`,
+      p.age ? `<span>${ic('calendar')} ${esc(p.age)}</span>` : '',
+      p.intent ? `<span class="soft">${esc(intentLabel(p.intent))}</span>` : '',
+    ].join('');
+    const facts = [
+      p.height ? ['Boy', `${p.height} cm`] : null,
+      p.body_type ? ['Vücut yapısı', labelOf(M.bodyTypes, p.body_type)] : null,
+      p.eye_color ? ['Göz', labelOf(M.eyeColors, p.eye_color)] : null,
+      p.hair_color ? ['Saç', labelOf(M.hairColors, p.hair_color)] : null,
+    ].filter(Boolean);
+    const myPct = state.user?.completeness?.percent;
     return `
-      <div class="card-hero" style="background:linear-gradient(160deg, ${esc(p.avatar_color)}, color-mix(in srgb, ${esc(p.avatar_color)} 45%, #12101c))">
-        ${shared.length ? `<span class="shared-count">${ic('sparkles')} ${shared.length} ortak ilgi</span>` : ''}
-        ${p.intent ? `<span class="badge">${esc(intentLabel(p.intent))}</span>` : ''}
-        ${p.topPick ? `<span class="pick-ribbon">${ic('star')} Günün en uyumlusu</span>` : ''}
-        ${avatarHTML(p, 'xl')}
-        <div class="name">${esc(name)}</div>
-        ${subBits.length ? `<div class="sub">${esc(subBits.join(' · '))}</div>` : ''}
+      <div class="card-hero">
+        <div class="chips-top">
+          <span>${shared.length ? `<span class="chip-dark accent">${ic('sparkles')} ${shared.length} ortak ilgi</span>` : ''}</span>
+          ${interactive ? `<button class="chip-dark" data-act="edit-profile" title="Profilini düzenle">${ic('pencil')} Profilim${myPct != null ? ` %${myPct}` : ''}</button>` : ''}
+        </div>
+        ${p.topPick ? `<span class="pick-ribbon">${ic('star', 'fill')} Günün en uyumlusu</span>` : ''}
+        <div class="avatar-wrap">${avatarHTML(p, 'xl')}${p.online ? '<span class="online" title="Çevrimiçi"></span>' : ''}</div>
+        <div class="name">${esc(displayName(p))}</div>
+        <div class="info-row">${info}</div>
       </div>
       <div class="card-body">
         ${lm ? `<div class="liked-banner ${lm.super ? 'super' : ''}">
-          <div class="lb-title">${lm.super ? `${ic('star')} Seni süper beğendi` : `${ic('msg')} Sana yorum yaptı`}</div>
+          <div class="lb-title">${lm.super ? `${ic('star', 'fill')} Seni süper beğendi` : `${ic('msg')} Sana yorum yaptı`}</div>
           ${lm.comment ? `${lm.target ? `<div class="lb-quote">“${esc(lm.target)}” için</div>` : ''}<div class="lb-text">${esc(lm.comment)}</div>` : ''}
         </div>` : ''}
         ${p.bio ? `<div class="likeable"><div class="section-title">Hakkında</div><div class="bio">${esc(p.bio)}</div>${likeBtn('Hakkında')}</div>` : ''}
+        ${facts.length ? `<div><div class="section-title">Fiziksel</div><div class="facts">${facts.map(([k, val]) => `<div class="fact"><small>${esc(k)}</small><b>${esc(val)}</b></div>`).join('')}</div></div>` : ''}
         ${p.daily?.answer ? `<div class="qa daily likeable"><div class="q">${ic('sun', 'sm')} Günün sorusu: ${esc(state.daily?.question || '')}</div><div class="a">${esc(p.daily.answer)}</div>${likeBtn('Günün sorusu')}</div>` : ''}
         ${p.daily?.locked && interactive ? `<div class="qa locked"><div><div class="q">${ic('lock', 'sm')} Günün sorusunu cevapladı</div><div class="small muted">Görmek için sen de cevapla.</div></div><button class="btn btn-sm" data-act="daily">Cevapla</button></div>` : ''}
         ${interests.length ? `<div><div class="section-title">İlgi alanları</div><div class="pills">${interests.map((i) => `<span class="pill ${sharedSet.has(i) ? 'shared' : ''}">${sharedSet.has(i) ? ic('check', 'sm') : ''}${esc(i)}</span>`).join('')}</div></div>` : ''}
         ${prompts.map((q) => `<div class="qa likeable"><div class="q">${esc(q.q)}</div><div class="a">${esc(q.a)}</div>${likeBtn(q.q)}</div>`).join('')}
-        ${!p.bio && !interests.length && !prompts.length && !p.daily?.answer ? `<div class="muted center" style="padding:20px 0">Bu kişi gizemli kalmayı seçmiş.</div>` : ''}
+        ${!p.bio && !interests.length && !prompts.length && !p.daily?.answer && !facts.length ? `<div class="muted center" style="padding:20px 0">Bu kişi gizemli kalmayı seçmiş.</div>` : ''}
       </div>`;
   }
 
@@ -592,8 +690,8 @@
     const done = state.daily?.answered;
     return `<div class="discover-head">
       <div class="seg" id="d-mode">
-        <button data-m="date" class="${state.mode === 'date' ? 'on' : ''}">Flört</button>
-        <button data-m="friend" class="${state.mode === 'friend' ? 'on' : ''}">Arkadaş</button>
+        <button data-m="date" class="${state.mode === 'date' ? 'on' : ''}">${ic('person')} Flört</button>
+        <button data-m="friend" class="${state.mode === 'friend' ? 'on' : ''}">${ic('users')} Arkadaş</button>
       </div>
       <button class="daily-pill ${done ? 'done' : ''}" id="d-daily">${ic('sun')} Günün sorusu ${done ? ic('check', 'sm') : '<span class="dot-new"></span>'}</button>
     </div>`;
@@ -654,6 +752,7 @@
       const lb = e.target.closest('[data-like]');
       if (lb) return openLikeSheet(top3[0], lb.dataset.like);
       if (e.target.closest('[data-act="daily"]')) openDailySheet();
+      if (e.target.closest('[data-act="edit-profile"]')) showView('profile');
     });
     $('#d-pass', v).onclick = () => decide('pass');
     $('#d-like', v).onclick = () => decide('like');
@@ -688,7 +787,7 @@
       <div class="stack">
         <textarea class="input" id="lk-c" maxlength="${state.meta.limits.commentMax}" placeholder="Bir yorum ekle (isteğe bağlı). Eşleşirseniz sohbetin ilk mesajı olur."></textarea>
         <div class="row">
-          <button class="btn grow super-btn" id="lk-super" ${L.superLeft > 0 ? '' : 'disabled'} style="color:var(--super)">${ic('star', 'sm')} Süper beğen</button>
+          <button class="btn grow super-btn" id="lk-super" ${L.superLeft > 0 ? '' : 'disabled'} style="color:var(--info)">${ic('star', 'sm')} Süper beğen</button>
           <button class="btn btn-primary grow" id="lk-like" ${L.likesLeft > 0 ? '' : 'disabled'}>${ic('heart', 'sm')} Beğen</button>
         </div>
         <div class="muted small center">Bugün ${L.likesLeft} beğeni · ${L.superLeft} süper beğeni hakkın var.</div>
@@ -746,7 +845,7 @@
       state.lastSwipe = r.matched ? null : { id: c.id, mode: state.mode };
       state.candidates.shift();
       setTimeout(() => { renderDeck(); deciding = false; }, 230);
-      if (opts.super) toast('Süper beğeni gönderildi ⭐', 'ok');
+      if (opts.super) toast('Süper beğeni gönderildi.', 'ok');
       else if (opts.comment) toast('Yorumun gönderildi. Eşleşirseniz sohbetin ilk mesajı olacak.', 'ok');
       if (state.candidates.length < 3) loadCandidates().then(() => { if (state.view === 'discover' && state.candidates.length <= 3) renderDeck(); });
       if (r.matched) { await loadMatches(); showMatchModal(r.match); }
@@ -773,8 +872,7 @@
     const friend = match.mode === 'friend';
     const el = openModal(`
       <div class="match-modal">
-        ${ic(friend ? 'users' : 'sparkles', 'lg sparkle')}
-        <h2>${friend ? 'Arkadaş oldunuz!' : 'Eşleştiniz!'}</h2>
+        <h2>${friend ? 'arkadaşsınız' : 'eşleştiniz'}<em>.</em></h2>
         <div class="pair">${avatarHTML(state.user, 'lg')}${avatarHTML(other, 'lg')}</div>
         <p class="muted">Sen ve <b>${esc(displayName(other))}</b> birbirinizi beğendiniz. ${state.meta.limits.matchHours} saat içinde biri yazmazsa eşleşme sona erer.</p>
         <div class="stack">
@@ -816,7 +914,7 @@
       case 'opener': return (lm.mine ? 'Açılış sorun: ' : 'Açılış sorusu: ') + (p.q || '');
       case 'comment': return who + (p.comment || '');
       case 'game': return who + gameLabel(p);
-      case 'reveal': return p.kind === 'done' ? 'Kimlikler açıldı 🎉' : lm.mine ? 'Kimliğini açmaya hazırsın' : 'Kimliğini açmaya hazır 👀';
+      case 'reveal': return p.kind === 'done' ? 'Kimlikler açıldı' : lm.mine ? 'Kimliğini açmaya hazırsın' : 'Kimliğini açmaya hazır';
       default: return who + lm.body;
     }
   }
@@ -852,7 +950,7 @@
     const pushOff = pushSupported() && (await pushStatus()) === 'off';
     if (state.view !== 'matches') return;
     v.innerHTML = `<div class="stack" style="padding-top:8px">
-      <div class="section-head"><h2>Sohbet</h2></div>
+      <div class="page-title">sohbet<span style="color:var(--accent)">.</span></div>
       ${pushOff ? `<div class="card push-card"><span class="fi">${ic('bell')}</span><div class="grow"><b>Yeni mesajları kaçırma</b><div class="small muted">Eşleşmeler ${state.meta.limits.matchHours} saatte düşüyor. Bildirimleri aç, hemen haberin olsun.</div></div><button class="btn btn-sm btn-primary" id="m-push">Aç</button></div>` : ''}
       ${fresh.length ? `<div><div class="section-title">Yeni eşleşmeler · ${state.meta.limits.matchHours} saat içinde yaz</div><div class="new-row">${fresh.map((m) => `<button data-id="${m.matchId}">${avatarHTML(m.user)}<span>${esc(displayName(m.user))}</span><span class="timer">${ic('clock')} ${fmtLeft(m.expiresAt - t)}</span></button>`).join('')}</div></div>` : ''}
       ${turn.length ? `<div><div class="section-title">Sıra sende · ${turn.length}</div><div class="match-list">${turn.map(item).join('')}</div></div>` : ''}
@@ -1022,7 +1120,7 @@
       return `<div class="msg system" data-mid="${m.id}">${ic('unlock', 'sm')} ${mine ? 'Kimliğini açmaya hazır olduğunu bildirdin.' : `${esc(displayName(state.chat.other))} kimliğini açmaya hazır.`}</div>`;
     }
     const people = Object.entries(p.people || {}).sort(([a]) => (Number(a) === meId() ? 1 : -1));
-    return `<div class="reveal-card" data-mid="${m.id}"><h4>${ic('unlock')} Kimlikler açıldı 🎉</h4><div class="reveal-people">
+    return `<div class="reveal-card" data-mid="${m.id}"><h4>${ic('unlock')} Kimlikler açıldı</h4><div class="reveal-people">
       ${people.map(([uid, info]) => `<div class="reveal-person"><div class="who">${Number(uid) === meId() ? 'Sen' : esc(state.chat.other.nickname)}</div>
         ${info.name ? `<div class="nm">${esc(info.name)}</div>` : ''}
         ${Object.entries(info.socials || {}).map(([pl, h]) => { const l = socialLink(pl, h); return `<div class="soc">${siconHTML(pl, 'brand sm')} ${l ? `<a href="${esc(l)}" target="_blank" rel="noopener">@${esc(h)}</a>` : esc(h)}</div>`; }).join('')}
@@ -1041,8 +1139,8 @@
       let result = '';
       if (p.answered) {
         const text = mine
-          ? `${esc(displayName(state.chat.other))} ${p.correct ? 'yalanı buldu! 🎉' : 'yanıldı 😅'}`
-          : (p.correct ? 'Yalanı buldun! 🎉' : 'Yanıldın 😅');
+          ? `${esc(displayName(state.chat.other))} ${p.correct ? 'yalanı buldu!' : 'yanıldı'}`
+          : (p.correct ? 'Yalanı buldun!' : 'Yanıldın');
         result = `<div class="game-result ${p.correct ? 'good' : 'meh'}">${text}</div>`;
       }
       else if (mine) result = `<div class="small muted" style="margin-top:6px">Tahmin bekleniyor…</div>`;
@@ -1057,7 +1155,7 @@
         if (answered && p.answer === i) marks.push(mine ? esc(displayName(state.chat.other)) : 'Sen');
         return `<div class="game-opt ${marks.length ? 'picked' : ''}"><span>${esc(o)}</span>${marks.length ? `<span class="small muted">${marks.join(' · ')}</span>` : ''}</div>`;
       }).join('');
-      const result = answered ? `<div class="game-result ${p.answer === p.senderPick ? 'good' : 'meh'}">${p.answer === p.senderPick ? 'Aynı seçim! 💞' : 'Farklı seçtiniz, konuşacak konu çıktı 😄'}</div>`
+      const result = answered ? `<div class="game-result ${p.answer === p.senderPick ? 'good' : 'meh'}">${p.answer === p.senderPick ? 'Aynı seçim!' : 'Farklı seçtiniz, konuşacak konu çıktı'}</div>`
         : mine ? '<div class="small muted" style="margin-top:6px">Seçim bekleniyor…</div>' : '';
       return `<div class="msg card ${side}" data-mid="${m.id}"><div class="title">${ic('scale')} Bu mu o mu?</div><div class="tot-opts">${opts}</div>${result}</div>`;
     }
@@ -1200,7 +1298,7 @@
         c.info.reveal = r.reveal;
         if (r.message) receiveMessage(c.matchId, r.message);
         refreshStrips();
-        toast(r.reveal.done ? 'Kimlikler açıldı! 🎉' : 'Hazır olduğunu bildirdik. Karşı taraf da hazır olunca açılacak.', 'ok');
+        toast(r.reveal.done ? 'Kimlikler açıldı!' : 'Hazır olduğunu bildirdik. Karşı taraf da hazır olunca açılacak.', 'ok');
       } catch (ex) { fail(ex); }
     };
   }
@@ -1338,7 +1436,7 @@
     if (message.type === 'opener' || message.type === 'comment') return; // eşleşmeyle birlikte gelir
     if (m) { m.unread = (m.unread || 0) + 1; updateUnreadBadge(); if (state.view === 'matches') renderMatches(); }
     else loadMatches().then(() => { if (state.view === 'matches') renderMatches(); });
-    toast(message.type === 'reveal' ? 'Biri kimliğini açmaya hazır 👀' : message.type === 'game' ? 'Yeni bir oyun daveti 🎲' : 'Yeni mesaj');
+    toast(message.type === 'reveal' ? 'Biri kimliğini açmaya hazır' : message.type === 'game' ? 'Yeni bir oyun daveti' : 'Yeni mesaj');
   }
 
   // ------------------------------------------------------------ başlat

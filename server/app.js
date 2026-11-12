@@ -7,7 +7,7 @@ import crypto from 'node:crypto';
 import { ensureDb, get, all, run, batch, now, DbConfigError } from './db.js';
 import {
   meta, randomNickname, randomAvatar, randomColor, INTERESTS, PROMPTS, INTENTS, SOCIALS, AVATARS, AVATAR_COLORS,
-  LIMITS, DAILY_QUESTIONS, CHAT_QUESTIONS,
+  LIMITS, DAILY_QUESTIONS, CHAT_QUESTIONS, HEIGHT_RANGE, BODY_TYPES, EYE_COLORS, HAIR_COLORS,
 } from './meta.js';
 import { isOffensive } from './filter.js';
 import { notify, pushEnabled, pushPublicKey, saveSubscription, removeSubscription } from './push.js';
@@ -108,7 +108,8 @@ async function userFromCookie(cookieHeader) {
 
 const parseJSON = (s, fallback) => { try { return JSON.parse(s); } catch { return fallback; } };
 const isOnline = (lastSeen) => !!lastSeen && now() - lastSeen < ONLINE_MS;
-const displayName = (u) => (u.first_name ? `${u.first_name}${u.last_name ? ' ' + u.last_name : ''}` : u.nickname);
+// Gerçek ad/soyad başkalarına asla gösterilmez; sadece sohbette karşılıklı kimlik açılınca paylaşılır.
+const displayName = (u) => u.nickname;
 const modeOf = (v) => (v === 'friend' ? 'friend' : 'date');
 
 /** Türkiye saatine göre bugünün tarihi (YYYY-AA-GG) ve günün başlangıcı. */
@@ -116,35 +117,75 @@ const turkeyDay = (t = now()) => new Date(t + TR_OFFSET).toISOString().slice(0, 
 const dayStart = (t = now()) => Date.parse(turkeyDay(t) + 'T00:00:00Z') - TR_OFFSET;
 const dailyQuestion = (day = turkeyDay()) => DAILY_QUESTIONS[Math.floor(Date.parse(day) / DAY_MS) % DAILY_QUESTIONS.length];
 
-/** Başkalarının görebileceği alanlar (kullanıcı adı, sosyal medya ve açılış sorusu asla yok). */
+/**
+ * Başkalarının görebileceği alanlar.
+ * Asla yok: kullanıcı adı, gerçek ad/soyad, sosyal medya, açılış sorusu.
+ */
 function publicProfile(u) {
   return {
     id: u.id,
     nickname: u.nickname,
     avatar: u.avatar,
     avatar_color: u.avatar_color,
-    first_name: u.first_name,
-    last_name: u.last_name,
     age: u.age,
     department: u.department,
     gender: u.gender,
     intent: u.intent,
     bio: u.bio,
+    height: u.height ?? null,
+    body_type: u.body_type ?? null,
+    eye_color: u.eye_color ?? null,
+    hair_color: u.hair_color ?? null,
     interests: parseJSON(u.interests, []),
     prompts: parseJSON(u.prompts, []),
     last_seen: u.last_seen,
     online: isOnline(u.last_seen),
   };
 }
+
+/**
+ * Profil doluluk oranı (Tinder tarzı). Ağırlıkların toplamı 100.
+ * Ad/soyad bilerek sayılmaz: gizli kalması bir tercih, eksiklik değil.
+ */
+const SCORE_ITEMS = [
+  { key: 'gender', label: 'Cinsiyet', pts: 5, ok: (u) => !!u.gender },
+  { key: 'bio', label: 'Kendini anlat', pts: 15, ok: (u) => (u.bio || '').trim().length >= 20 },
+  { key: 'interests', label: 'En az 5 ilgi alanı', pts: 15, ok: (u) => parseJSON(u.interests, []).length >= 5 },
+  { key: 'prompt1', label: '1. soru-cevap', pts: 7, ok: (u) => parseJSON(u.prompts, []).length >= 1 },
+  { key: 'prompt2', label: '2. soru-cevap', pts: 7, ok: (u) => parseJSON(u.prompts, []).length >= 2 },
+  { key: 'prompt3', label: '3. soru-cevap', pts: 7, ok: (u) => parseJSON(u.prompts, []).length >= 3 },
+  { key: 'intent', label: 'Ne aradığın', pts: 6, ok: (u) => !!u.intent },
+  { key: 'opener', label: 'Açılış sorusu', pts: 6, ok: (u) => !!u.opening_question },
+  { key: 'department', label: 'Bölüm', pts: 6, ok: (u) => !!u.department },
+  { key: 'age', label: 'Yaş', pts: 5, ok: (u) => !!u.age },
+  { key: 'height', label: 'Boy', pts: 5, ok: (u) => !!u.height },
+  { key: 'body', label: 'Vücut yapısı', pts: 5, ok: (u) => !!u.body_type },
+  { key: 'socials', label: 'Bir sosyal medya hesabı (gizli)', pts: 5, ok: (u) => Object.keys(parseJSON(u.socials, {})).length > 0 },
+  { key: 'eyes', label: 'Göz rengi', pts: 3, ok: (u) => !!u.eye_color },
+  { key: 'hair', label: 'Saç rengi', pts: 3, ok: (u) => !!u.hair_color },
+];
+function completeness(u) {
+  let percent = 0;
+  const missing = [];
+  for (const it of SCORE_ITEMS) {
+    if (it.ok(u)) percent += it.pts;
+    else missing.push({ key: it.key, label: it.label, pts: it.pts });
+  }
+  return { percent, missing: missing.sort((a, b) => b.pts - a.pts) };
+}
+
 function ownProfile(u) {
   return {
     ...publicProfile(u),
     username: u.username,
+    first_name: u.first_name,
+    last_name: u.last_name,
     looking_for: u.looking_for,
     socials: parseJSON(u.socials, {}),
     profile_done: !!u.profile_done,
     friend_mode: !!u.friend_mode,
     opening_question: u.opening_question || '',
+    completeness: completeness(u),
   };
 }
 
@@ -280,10 +321,21 @@ app.put('/api/profile', requireAuth, h(async (req, res) => {
   if ([bio, opening_question, ...prompts.map((p) => p.a)].some((t) => t && isOffensive(t))) {
     throw bad('Profilinde kırıcı olabilecek bir ifade var. Lütfen düzenle.');
   }
+  // fiziksel özellikler (isteğe bağlı)
+  const height = b.height === '' || b.height === null || b.height === undefined ? null : Number(b.height);
+  if (height !== null && (!Number.isInteger(height) || height < HEIGHT_RANGE.min || height > HEIGHT_RANGE.max)) {
+    throw bad(`Boy ${HEIGHT_RANGE.min}-${HEIGHT_RANGE.max} cm arasında olmalı.`);
+  }
+  const pickId = (list, v) => (list.some((x) => x.id === v) ? v : null);
+  const body_type = pickId(BODY_TYPES, b.body_type);
+  const eye_color = pickId(EYE_COLORS, b.eye_color);
+  const hair_color = pickId(HAIR_COLORS, b.hair_color);
   await run(`UPDATE users SET nickname=?, avatar=?, avatar_color=?, first_name=?, last_name=?, age=?, department=?,
-       gender=?, looking_for=?, intent=?, bio=?, interests=?, prompts=?, socials=?, friend_mode=?, opening_question=?, profile_done=1 WHERE id=?`,
+       gender=?, looking_for=?, intent=?, bio=?, interests=?, prompts=?, socials=?, friend_mode=?, opening_question=?,
+       height=?, body_type=?, eye_color=?, hair_color=?, profile_done=1 WHERE id=?`,
     nickname, avatar, avatar_color, first_name, last_name, age, department, gender, looking_for, intent, bio,
-    JSON.stringify(interests), JSON.stringify(prompts), JSON.stringify(socials), friend_mode, opening_question, req.user.id);
+    JSON.stringify(interests), JSON.stringify(prompts), JSON.stringify(socials), friend_mode, opening_question,
+    height, body_type, eye_color, hair_color, req.user.id);
   res.json({ user: ownProfile(await get('SELECT * FROM users WHERE id = ?', req.user.id)) });
 }));
 
@@ -396,7 +448,9 @@ app.get('/api/discover', requireAuth, h(async (req, res) => {
   const top = pool
     .map((o) => {
       const lm = likedMe.get(o.id);
-      const bonus = (lm?.super ? 6 : 0) + (lm?.comment ? 3 : 0) + (o.id === pickId ? 1000 : 0);
+      // Profil doluluğu: %100 dolu profil, %0 dolu olana göre ~10 puan (≈3 ortak ilgi) önde çıkar
+      const fill = completeness(o).percent / 10;
+      const bonus = fill + (lm?.super ? 6 : 0) + (lm?.comment ? 3 : 0) + (o.id === pickId ? 1000 : 0);
       return { o, s: compatibilityScore(me, o).score + bonus + Math.random() };
     })
     .sort((a, b) => b.s - a.s)
@@ -842,6 +896,9 @@ function adminUser(u) {
   return {
     ...publicProfile(u),
     username: u.username,
+    first_name: u.first_name,
+    last_name: u.last_name,
+    completeness: completeness(u).percent,
     looking_for: u.looking_for,
     created_at: u.created_at,
     profile_done: !!u.profile_done,

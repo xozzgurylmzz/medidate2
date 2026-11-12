@@ -52,13 +52,20 @@ for (let i = 1; i <= total; i++) {
   const r = await run(`INSERT INTO users (username, password_hash, created_at, last_seen, nickname, avatar, avatar_color,
         first_name, last_name, age, department, gender, looking_for, intent, bio, interests, prompts, socials, friend_mode, opening_question, profile_done)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-    username, hashPassword(PASSWORD), now(), now(), randomNickname(), randomAvatar(), randomColor(),
+    username, hashPassword(PASSWORD), now(), now(), randomNickname(), randomAvatar(gender), randomColor(),
     showName ? one(names[gender]) : null, showName && Math.random() < 0.3 ? 'Y.' : null,
     Math.random() < 0.8 ? 18 + Math.floor(Math.random() * 8) : null,
     Math.random() < 0.85 ? one(DEPARTMENTS) : null,
     gender, one(['kadin', 'erkek', 'herkes', 'herkes']), one(['ciddi', 'flort', 'arkadas', 'bilmiyorum']),
     one(bios) || null, JSON.stringify(pick(INTERESTS, 3 + Math.floor(Math.random() * 7))), JSON.stringify(prompts), JSON.stringify(socials),
     Math.random() < 0.5 ? 1 : 0, Math.random() < 0.5 ? one(OPENER_SUGGESTIONS) : null);
+  // fiziksel özellikler (çoğunda dolu)
+  if (Math.random() < 0.75) {
+    await run('UPDATE users SET height = ?, body_type = ?, eye_color = ?, hair_color = ? WHERE id = ?',
+      gender === 'kadin' ? 155 + Math.floor(Math.random() * 20) : 168 + Math.floor(Math.random() * 22),
+      one(['zayif', 'ince', 'orta', 'atletik', 'baliketli']), Math.random() < 0.6 ? one(['kahverengi', 'ela', 'yesil', 'mavi']) : null,
+      Math.random() < 0.6 ? one(['siyah', 'kahverengi', 'kumral', 'sari']) : null, r.lastInsertRowid);
+  }
   // yarısı günün sorusunu cevaplamış olsun
   if (Math.random() < 0.5) {
     await run('INSERT OR IGNORE INTO daily_answers (user_id, day, answer, created_at) VALUES (?, ?, ?, ?)',

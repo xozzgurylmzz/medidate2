@@ -24,7 +24,10 @@ Ankara Medipol Üniversitesi öğrencilerine özel, **fotoğrafsız ve anonim** 
 - **Bildirimler ve uygulama olarak kurulum (PWA):** Yeni eşleşme ve mesajda telefona bildirim; ana ekrana uygulama gibi eklenebilir.
 - **Güvenlik:** Eşleşmeyi kaldırma, engelleme, şikayet etme, hesabı silme.
 - **Admin paneli:** `/admin` adresinde istatistikler, kullanıcı arama, banlama, hesap silme ve şikayet yönetimi.
-- **Tasarım:** Koyu öncelikli premium tema, açık tema desteği (sistem tercihine göre), Inter yazı tipi, SVG ikonlar.
+- **Tasarım:** Editoryal / brutalist koyu tema: siyah-beyaz kontrast, analog film greni, Manrope + Inter tipografi, kontrollü neon kırmızı. Masaüstünde solda editoryal afiş paneli.
+- **Profil doluluk oranı:** Girişte profil sayfası açılır; doluluk halkası ve puanlı eksikler listesi. Dolu profiller keşfette daha önde çıkar.
+- **Fiziksel özellikler:** Boy (cm), vücut yapısı (Zayıf, Orta yapılı, Balıketli…), göz ve saç rengi; hepsi isteğe bağlı.
+- **Gerçek isim gizli:** Ad/soyad keşfette, eşleşmede ve sohbette görünmez; sadece karşılıklı kimlik açılınca paylaşılır.
 
 ## Kurulum
 
@@ -53,7 +56,7 @@ Tarayıcıda `http://localhost:3000` adresini aç.
 
 ## Görseller ve lisanslar
 
-- Avatarlar: [DiceBear](https://www.dicebear.com) "Lorelei" stili (Lisa Wischofsky), **CC0 1.0**. `public/avatars/` altında 48 SVG.
+- Avatarlar: [DiceBear](https://www.dicebear.com) "Lorelei" stili (Lisa Wischofsky), **CC0 1.0**. `public/avatars/` altında 24 kadın (f01-f24), 24 erkek (m01-m24) ve eski karışık set (a01-a48).
 - Sosyal medya ikonları: [Simple Icons](https://simpleicons.org), **CC0 1.0**. `public/icons/` altında.
 - Arayüz ikonları: Lucide tarzı çizgi ikonlar, ISC, `public/app.js` içinde inline.
 - Yazı tipi: Inter (Google Fonts, OFL).

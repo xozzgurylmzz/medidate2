@@ -222,6 +222,13 @@ const MIGRATIONS = {
     )`,
     'CREATE INDEX IF NOT EXISTS idx_push_user ON push_subs(user_id)',
   ],
+  // v3: fiziksel özellikler (hepsi isteğe bağlı)
+  3: [
+    'ALTER TABLE users ADD COLUMN height INTEGER',
+    'ALTER TABLE users ADD COLUMN body_type TEXT',
+    'ALTER TABLE users ADD COLUMN eye_color TEXT',
+    'ALTER TABLE users ADD COLUMN hair_color TEXT',
+  ],
 };
 
 async function migrate(c) {
