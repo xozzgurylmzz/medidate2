@@ -128,9 +128,119 @@ export function ensureDb() {
       const cols = (await c.execute('PRAGMA table_info(reports)')).rows.map((r) => r.name);
       if (!cols.includes('resolved')) await c.execute('ALTER TABLE reports ADD COLUMN resolved INTEGER NOT NULL DEFAULT 0');
       await c.execute('CREATE INDEX IF NOT EXISTS idx_reports_reported ON reports(reported_id, resolved)');
+      await migrate(c);
     })().catch((e) => { ready = null; throw e; });
   }
   return ready;
+}
+
+// ---------------------------------------------------------------- sürüm geçişleri
+// Her geçiş tek bir işlem (transaction) içinde çalışır; yarıda kalırsa hiçbir şey değişmez.
+// Mevcut kayıtlar (id'ler dahil) korunur.
+
+/** Tablo yeniden kurulurken AUTOINCREMENT sayacını taşır; yeni id'ler eskilerden büyük kalır. */
+function keepSequence(oldName, newName) {
+  return [
+    `INSERT INTO sqlite_sequence (name, seq) SELECT '${newName}', seq FROM sqlite_sequence
+       WHERE name = '${oldName}' AND NOT EXISTS (SELECT 1 FROM sqlite_sequence WHERE name = '${newName}')`,
+    `UPDATE sqlite_sequence SET seq = MAX(seq, COALESCE((SELECT seq FROM sqlite_sequence WHERE name = '${oldName}'), 0))
+       WHERE name = '${newName}'`,
+  ];
+}
+
+const MIGRATIONS = {
+  // v2: arkadaş modu, yorumlu/süper beğeni, açılış sorusu, oyunlar, kimlik açma, günün sorusu, bildirimler
+  2: [
+    'ALTER TABLE users ADD COLUMN friend_mode INTEGER NOT NULL DEFAULT 0',
+    'ALTER TABLE users ADD COLUMN opening_question TEXT',
+    'ALTER TABLE matches ADD COLUMN mode TEXT NOT NULL DEFAULT \'date\'',
+    'ALTER TABLE matches ADD COLUMN ended_reason TEXT',
+
+    // swipes: her mod için ayrı kaydırma + süper beğeni + yorum
+    `CREATE TABLE swipes_v2 (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      from_user INTEGER NOT NULL,
+      to_user INTEGER NOT NULL,
+      mode TEXT NOT NULL DEFAULT 'date',
+      action TEXT NOT NULL CHECK (action IN ('like','pass')),
+      super INTEGER NOT NULL DEFAULT 0,
+      target TEXT,
+      comment TEXT,
+      created_at INTEGER NOT NULL,
+      UNIQUE(from_user, to_user, mode)
+    )`,
+    'INSERT INTO swipes_v2 (id, from_user, to_user, action, created_at) SELECT id, from_user, to_user, action, created_at FROM swipes',
+    ...keepSequence('swipes', 'swipes_v2'),
+    'DROP TABLE swipes',
+    'ALTER TABLE swipes_v2 RENAME TO swipes',
+    'CREATE INDEX IF NOT EXISTS idx_swipes_to ON swipes(to_user, mode)',
+    'CREATE INDEX IF NOT EXISTS idx_swipes_from_time ON swipes(from_user, created_at)',
+
+    // messages: yeni mesaj türleri (açılış sorusu, yorum, oyun, kimlik açma) + filtre işareti
+    `CREATE TABLE messages_v2 (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      match_id INTEGER NOT NULL,
+      sender_id INTEGER NOT NULL,
+      type TEXT NOT NULL DEFAULT 'text',
+      body TEXT NOT NULL,
+      flagged INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL
+    )`,
+    'INSERT INTO messages_v2 (id, match_id, sender_id, type, body, created_at) SELECT id, match_id, sender_id, type, body, created_at FROM messages',
+    ...keepSequence('messages', 'messages_v2'),
+    'DROP TABLE messages',
+    'ALTER TABLE messages_v2 RENAME TO messages',
+    'CREATE INDEX IF NOT EXISTS idx_messages_match ON messages(match_id, id)',
+
+    `CREATE TABLE IF NOT EXISTS reveals (
+      match_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      payload TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      PRIMARY KEY (match_id, user_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS daily_answers (
+      user_id INTEGER NOT NULL,
+      day TEXT NOT NULL,
+      answer TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      PRIMARY KEY (user_id, day)
+    )`,
+    'CREATE INDEX IF NOT EXISTS idx_daily_day ON daily_answers(day)',
+    `CREATE TABLE IF NOT EXISTS daily_picks (
+      user_id INTEGER NOT NULL,
+      day TEXT NOT NULL,
+      pick_id INTEGER,
+      PRIMARY KEY (user_id, day)
+    )`,
+    `CREATE TABLE IF NOT EXISTS push_subs (
+      endpoint TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    )`,
+    'CREATE INDEX IF NOT EXISTS idx_push_user ON push_subs(user_id)',
+  ],
+};
+
+async function migrate(c) {
+  await c.execute('CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT)');
+  const current = async () => Number((await c.execute("SELECT value FROM app_meta WHERE key = 'schema_version'")).rows[0]?.value || 1);
+  for (const v of Object.keys(MIGRATIONS).map(Number).sort((a, b) => a - b)) {
+    if ((await current()) >= v) continue;
+    try {
+      await c.batch([
+        ...MIGRATIONS[v],
+        { sql: "INSERT INTO app_meta (key, value) VALUES ('schema_version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", args: [String(v)] },
+      ], 'write');
+      console.log(`Veritabanı sürüm ${v}'e güncellendi.`);
+    } catch (e) {
+      // aynı anda başka bir sunucu örneği geçişi yapmış olabilir
+      if ((await current()) >= v) continue;
+      throw e;
+    }
+  }
 }
 
 function toObjects(rs) {

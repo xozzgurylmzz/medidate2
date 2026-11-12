@@ -90,9 +90,92 @@ export function randomNickname() {
 export const randomAvatar = () => AVATARS[Math.floor(Math.random() * AVATARS.length)];
 export const randomColor = () => AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
 
+// ---------------------------------------------------------------- yeni özellikler
+
+export const LIMITS = {
+  likesPerDay: 25,      // günlük beğeni hakkı (Hinge)
+  superPerDay: 1,       // günlük süper beğeni (Tinder)
+  matchHours: 48,       // ilk mesaj yazılmazsa eşleşme düşer (Bumble)
+  commentMax: 140,
+  openerMax: 120,
+  dailyAnswerMax: 140,
+};
+
+// Günün sorusu: her gün sıradaki soru (Türkiye saatine göre)
+export const DAILY_QUESTIONS = [
+  'Bu hafta seni en çok ne güldürdü?',
+  'Şu an kulaklığında hangi şarkı var?',
+  'Hayalindeki hafta sonu planı ne?',
+  'Kampüste en sevdiğin köşe neresi?',
+  'Asla vazgeçemeyeceğin bir alışkanlık?',
+  'Bir süper gücün olsa ne olurdu?',
+  'En son izlediğin ve önerdiğin dizi/film?',
+  'Sabah insanı mısın, gece kuşu mu? Neden?',
+  'Çocukken ne olmak istiyordun?',
+  'Ankara\'da herkese önerdiğin bir mekan?',
+  'En sevdiğin kahvaltılık?',
+  'Seni tanımlayan üç emoji olsa?',
+  'Bu dönem en çok hangi derse yetişmeye çalışıyorsun?',
+  'Bir günlüğüne başka bir şehirde olsan neresi?',
+  'En utanç verici ama tatlı anın?',
+  'Telefonundaki en saçma uygulama hangisi?',
+  'Bir konseri seçebilsen kimi izlerdin?',
+  'İlk buluşmada asla yapılmaması gereken şey?',
+  'En iyi gece atıştırmalığı?',
+  'Son zamanlarda öğrendiğin en ilginç bilgi?',
+  'Kedi mi köpek mi? Savun.',
+  'Hayatında küçük ama mutlu eden bir şey?',
+  'Bir kitabın ya da filmin karakteri olsan kim olurdun?',
+  'Pazar günü ideal saat kaçta uyanmak?',
+  'Bu yıl kendine koyduğun bir hedef?',
+  'En çok güldüğün iç şaka ne hakkında?',
+  'Yaz mı kış mı? Tek kelimeyle.',
+  'Ders çalışırken mutlaka yanında olan şey?',
+  'Seni en hızlı ne sinirlendirir?',
+  'Bugün kendine bir iltifat et.',
+];
+
+// Açılış sorusu önerileri (Bumble Opening Moves)
+export const OPENER_SUGGESTIONS = [
+  'İdeal pazar günün nasıl geçer?',
+  'Kampüste en sevdiğin yer neresi?',
+  'Son zamanlarda seni en çok ne heyecanlandırdı?',
+  'Sence ilk buluşma için en iyi yer neresi?',
+  'Hangi konuda saatlerce konuşabilirsin?',
+  'Bana bir şarkı öner, seni tanıyayım.',
+  'Bu dönemki en büyük derdin ne?',
+];
+
+// Sohbet oyunu: "Bu mu o mu" hazır ikilileri
+export const THIS_OR_THAT = [
+  ['Kahve', 'Çay'], ['Dağ', 'Deniz'], ['Kitap', 'Film'], ['Sabah', 'Gece'], ['Kedi', 'Köpek'],
+  ['Ev partisi', 'Konser'], ['Tatlı', 'Tuzlu'], ['Yaz', 'Kış'], ['Netflix', 'Dışarı çıkmak'], ['Pizza', 'Hamburger'],
+  ['Mesaj', 'Sesli arama'], ['Plan yapmak', 'Spontane olmak'], ['Kütüphane', 'Kafe'], ['Rap', 'Rock'], ['Erken gelmek', 'Tam zamanında gelmek'],
+];
+
+// Sohbet oyunu: "Rastgele soru"
+export const CHAT_QUESTIONS = [
+  'Hiç kimseye söylemediğin küçük bir hayalin var mı?',
+  'Seni en iyi anlatan film sahnesi hangisi?',
+  'Bir gün boyunca görünmez olsan ilk ne yapardın?',
+  'Hayatındaki en iyi tavsiyeyi kimden aldın?',
+  'En son ne zaman kahkahalarla güldün?',
+  'Bir şeyi değiştirebilseydin okulda neyi değiştirirdin?',
+  'Seni tanımayan biri hakkında en çok neyi yanlış düşünür?',
+  'Çocukluğundan kalan en tatlı anı?',
+  'Bir hafta tatilin olsa nereye giderdin?',
+  'Üç kelimeyle ideal ilişki?',
+  'En çok neyi erteliyorsun?',
+  'Hangi konuda fikrini değiştirdin?',
+  'Seni en çok motive eden şey ne?',
+  'Arkadaşların seni nasıl tarif eder?',
+  'Bir ünlüyle yemek yiyebilsen kim olurdu?',
+];
+
 export function meta() {
   return {
     departments: DEPARTMENTS, interests: INTERESTS, prompts: PROMPTS, intents: INTENTS,
     genders: GENDERS, lookingFor: LOOKING_FOR, socials: SOCIALS, avatars: AVATARS, avatarColors: AVATAR_COLORS,
+    limits: LIMITS, openerSuggestions: OPENER_SUGGESTIONS, thisOrThat: THIS_OR_THAT,
   };
 }

@@ -5,12 +5,20 @@
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const parse = (s, fb = {}) => { try { return JSON.parse(s); } catch { return fb; } };
+  const store = {
+    get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
+    set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* yok */ } },
+  };
 
   // Lucide tarzı çizgi ikonlar (ISC) – inline SVG
   const ICONS = {
     heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
+    star: '<path d="M11.5 2.3a.6.6 0 0 1 1 0l2.6 5.3 5.8.8a.6.6 0 0 1 .3 1l-4.2 4.1 1 5.8a.6.6 0 0 1-.8.6L12 17.2l-5.2 2.7a.6.6 0 0 1-.8-.6l1-5.8-4.2-4.1a.6.6 0 0 1 .3-1l5.8-.8Z"/>',
+    undo: '<path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>',
     x: '<path d="M18 6 6 18M6 6l12 12"/>',
     more: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
     back: '<path d="m15 18-6-6 6-6"/>',
     send: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
     link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
@@ -18,6 +26,7 @@
     logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
     shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
     eyeOff: '<path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.5 13.5 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/>',
+    eye: '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
     sparkles: '<path d="M9.94 14.34 8 20l-1.94-5.66L1 12l5.06-1.94L8 4l1.94 6.06L15 12Z"/><path d="M19 3v4M21 5h-4M19 17v4M21 19h-4"/>',
     check: '<path d="M20 6 9 17l-5-5"/>',
     flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/>',
@@ -26,18 +35,29 @@
     trash: '<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
     cap: '<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>',
     user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
     chat: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
     ghost: '<path d="M9 10h.01M15 10h.01"/><path d="M12 2a8 8 0 0 0-8 8v12l3-3 2.5 3 2.5-3 2.5 3 2.5-3 3 3V10a8 8 0 0 0-8-8z"/>',
     lock: '<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
     info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
     refresh: '<path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/>',
     alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
+    clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+    bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+    download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+    msg: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+    scale: '<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10M12 3v18M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>',
+    help: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>',
+    unlock: '<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>',
   };
   const ic = (name, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ''}</svg>`;
 
   const state = {
     meta: null, user: null, view: null, authMode: 'login',
-    candidates: [], discoverLoading: false, matches: [], chat: null, typingSentAt: 0,
+    mode: store.get('md_mode', 'date') === 'friend' ? 'friend' : 'date',
+    candidates: [], discoverLoading: false, limits: null, daily: null, discoverFlags: {},
+    lastSwipe: null, matches: [], chat: null, typingSentAt: 0, installPrompt: null,
   };
 
   // ------------------------------------------------------------ API
@@ -51,10 +71,23 @@
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       if (res.status === 401 && state.user) { state.user = null; stopPolling(); closeModal(); renderTopbar(); showView('auth'); }
-      throw new Error(data.error || 'Bir şeyler ters gitti.');
+      const err = new Error(data.error || 'Bir şeyler ters gitti.');
+      err.status = res.status; err.data = data;
+      throw err;
     }
     return data;
   }
+
+  /** Kırıcı ifade uyarısı (409): "Emin misin?" sorar, onaylanırsa confirmed:true ile tekrar dener. */
+  async function withConfirm(fn) {
+    try { return await fn(false); } catch (ex) {
+      if (!ex.data?.needsConfirm) throw ex;
+      const yes = await confirmSheet('Emin misin?', ex.message, 'Yine de gönder', true, 'Düzenle');
+      if (!yes) { const e = new Error(''); e.cancelled = true; throw e; }
+      return fn(true);
+    }
+  }
+  const fail = (ex) => { if (!ex?.cancelled && ex?.message) toast(ex.message, 'err'); };
 
   // ------------------------------------------------------------ yardımcılar
   function toast(msg, kind = '') {
@@ -62,7 +95,7 @@
     el.className = 'toast ' + kind;
     el.innerHTML = `${kind === 'err' ? ic('alert', 'sm') : kind === 'ok' ? ic('check', 'sm') : ic('info', 'sm')}<span>${esc(msg)}</span>`;
     $('#toasts').appendChild(el);
-    setTimeout(() => el.remove(), 3200);
+    setTimeout(() => el.remove(), 3400);
   }
   function openModal(html, { center = false } = {}) {
     const host = $('#modal');
@@ -73,13 +106,13 @@
     return host.firstElementChild;
   }
   function closeModal() { const host = $('#modal'); host.hidden = true; host.innerHTML = ''; }
-  function confirmSheet(title, text, okLabel, danger = false) {
+  function confirmSheet(title, text, okLabel, danger = false, cancelLabel = 'Vazgeç') {
     return new Promise((resolve) => {
       const el = openModal(`
         <div class="sheet-title">${esc(title)}</div>
         <p class="muted" style="margin:0 0 16px">${esc(text)}</p>
         <div class="row">
-          <button class="btn grow" data-x="no">Vazgeç</button>
+          <button class="btn grow" data-x="no">${esc(cancelLabel)}</button>
           <button class="btn grow ${danger ? 'btn-danger' : 'btn-primary'}" data-x="yes">${esc(okLabel)}</button>
         </div>`, { center: true });
       el.onclick = (e) => { const b = e.target.closest('[data-x]'); if (!b) return; closeModal(); resolve(b.dataset.x === 'yes'); };
@@ -90,7 +123,12 @@
     if (d.toDateString() === today.toDateString()) return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
     return d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' });
   };
-  const displayName = (p) => p.first_name ? `${p.first_name}${p.last_name ? ' ' + p.last_name : ''}` : p.nickname;
+  const fmtLeft = (ms) => {
+    if (ms <= 0) return 'süre doldu';
+    const h = Math.floor(ms / 3600e3);
+    return h >= 1 ? `${h} sa` : `${Math.max(1, Math.floor(ms / 60e3))} dk`;
+  };
+  const displayName = (p) => (p.first_name ? `${p.first_name}${p.last_name ? ' ' + p.last_name : ''}` : p.nickname);
   const intentLabel = (id) => (state.meta.intents.find((i) => i.id === id) || {}).label || '';
   const socialDef = (id) => state.meta.socials.find((s) => s.id === id) || { id, label: id };
   const avatarHTML = (p, cls = '') => `<div class="avatar ${cls}" style="background:${esc(p.avatar_color)}"><img src="/avatars/${esc(p.avatar)}.svg" alt="" draggable="false"></div>`;
@@ -102,6 +140,19 @@
       tiktok: `https://tiktok.com/@${h}`, telegram: `https://t.me/${h}`,
     };
     return map[platform] || null;
+  }
+  const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isStandalone = () => window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
+
+  /** Profil kaydı için mevcut profilden tam gövde oluşturur (tek alan değiştirmek için). */
+  function profileBody(patch = {}) {
+    const u = state.user;
+    return {
+      nickname: u.nickname, avatar: u.avatar, avatar_color: u.avatar_color, first_name: u.first_name, last_name: u.last_name,
+      age: u.age ?? '', department: u.department, gender: u.gender, looking_for: u.looking_for, intent: u.intent, bio: u.bio,
+      interests: u.interests, prompts: u.prompts, socials: u.socials, friend_mode: u.friend_mode, opening_question: u.opening_question,
+      ...patch,
+    };
   }
 
   // ------------------------------------------------------------ görünüm yönetimi
@@ -155,8 +206,8 @@
       ${m === 'register' ? `
       <div class="features">
         <div class="feature"><span class="fi warm">${ic('eyeOff')}</span><div><b>Fotoğraf yok, tamamen anonim</b>Bir avatar ve takma adla görünürsün. İsim, yaş ve bölüm isteğe bağlı.</div></div>
-        <div class="feature"><span class="fi">${ic('sparkles')}</span><div><b>Sana uygun kişiler</b>İlgi alanların, niyetin ve cevapların eşleşmeleri belirler.</div></div>
-        <div class="feature"><span class="fi warm">${ic('lock')}</span><div><b>Sosyal medyan sende kalır</b>Eşleştikten sonra, sohbette istediğin anda sen paylaşırsın.</div></div>
+        <div class="feature"><span class="fi">${ic('unlock')}</span><div><b>Hazır olunca birlikte açılın</b>İkiniz de isterseniz isim ve sosyal medya aynı anda açılır.</div></div>
+        <div class="feature"><span class="fi warm">${ic('users')}</span><div><b>Flört ya da arkadaşlık</b>İki ayrı mod: kampüste sevgili de, ders arkadaşı da bulabilirsin.</div></div>
       </div>` : ''}`;
 
     $$('[data-mode]', v).forEach((b) => b.onclick = () => { state.authMode = b.dataset.mode; renderAuth(); });
@@ -181,8 +232,10 @@
     state.user = user;
     startPolling();
     renderTopbar();
-    if (!user.profile_done) { showView('profile'); toast('Hoş geldin! Önce anonim profilini oluştur.'); }
-    else { await loadMatches(); showView('discover'); }
+    if (!user.profile_done) { showView('profile'); toast('Hoş geldin! Önce anonim profilini oluştur.'); return; }
+    await loadMatches();
+    const deep = Number(new URLSearchParams(location.search).get('match'));
+    if (deep) { history.replaceState(null, '', '/'); openChat(deep); } else showView('discover');
   }
 
   function renderTopbar() {
@@ -191,9 +244,61 @@
   }
   async function logout() {
     try { await api('/auth/logout', { method: 'POST', body: {} }); } catch { /* yok say */ }
-    state.user = null; state.matches = []; state.candidates = []; state.chat = null;
+    state.user = null; state.matches = []; state.candidates = []; state.chat = null; state.lastSwipe = null;
     stopPolling();
     state.authMode = 'login'; renderTopbar(); showView('auth');
+  }
+
+  // ------------------------------------------------------------ bildirimler & uygulama kurulumu
+  let swReg = null;
+  async function registerSW() {
+    if (!('serviceWorker' in navigator)) return;
+    try { swReg = await navigator.serviceWorker.register('/sw.js'); } catch { swReg = null; }
+    navigator.serviceWorker.addEventListener('message', (e) => {
+      if (e.data?.type !== 'open' || !state.user) return;
+      const id = Number(new URL(e.data.url).searchParams.get('match'));
+      if (id) openChat(id);
+    });
+  }
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); state.installPrompt = e; if (state.view === 'profile') renderProfile(); });
+
+  const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && !!state.meta?.push?.enabled;
+  function b64ToUint8(b64) {
+    const pad = '='.repeat((4 - (b64.length % 4)) % 4);
+    const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+    return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+  }
+  async function pushStatus() {
+    if (!pushSupported()) return 'unsupported';
+    if (Notification.permission === 'denied') return 'denied';
+    try {
+      const reg = swReg || await navigator.serviceWorker.ready;
+      return (await reg.pushManager.getSubscription()) ? 'on' : 'off';
+    } catch { return 'off'; }
+  }
+  async function enablePush() {
+    if (!pushSupported()) {
+      toast(isIOS() && !isStandalone() ? 'iPhone\'da bildirim için önce siteyi ana ekrana ekle.' : 'Bu tarayıcı bildirimleri desteklemiyor.', 'err');
+      return false;
+    }
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { toast('Bildirim izni verilmedi.', 'err'); return false; }
+    try {
+      const reg = swReg || await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToUint8(state.meta.push.key) });
+      await api('/push/subscribe', { body: { subscription: sub.toJSON() } });
+      toast('Bildirimler açıldı.', 'ok');
+      return true;
+    } catch (ex) { toast(ex.message || 'Bildirimler açılamadı.', 'err'); return false; }
+  }
+  async function disablePush() {
+    try {
+      const reg = swReg || await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) { await api('/push/unsubscribe', { body: { endpoint: sub.endpoint } }); await sub.unsubscribe(); }
+      toast('Bildirimler kapatıldı.');
+    } catch (ex) { fail(ex); }
   }
 
   // ------------------------------------------------------------ profil düzenleme
@@ -205,6 +310,7 @@
       first_name: u.first_name || '', last_name: u.last_name || '', age: u.age ?? '', department: u.department || '',
       gender: u.gender || '', looking_for: u.looking_for || 'herkes', intent: u.intent || '', bio: u.bio || '',
       interests: [...(u.interests || [])], prompts: [...(u.prompts || [])], socials: { ...(u.socials || {}) },
+      friend_mode: !!u.friend_mode, opening_question: u.opening_question || '',
     };
     while (d.prompts.length < 3) d.prompts.push({ q: '', a: '' });
     const onboarding = !u.profile_done;
@@ -241,7 +347,7 @@
           <label class="field">Cinsiyetin <span class="req">* zorunlu</span>
             <div class="seg" id="p-gender">${M.genders.map((g) => `<button type="button" data-v="${g.id}" class="${d.gender === g.id ? 'on' : ''}">${esc(g.label)}</button>`).join('')}</div>
           </label>
-          <label class="field">Kimlerle eşleşmek istersin?
+          <label class="field">Flört modunda kimleri görmek istersin?
             <div class="seg neutral" id="p-look">${M.lookingFor.map((g) => `<button type="button" data-v="${g.id}" class="${d.looking_for === g.id ? 'on' : ''}">${esc(g.label)}</button>`).join('')}</div>
           </label>
         </div>
@@ -253,6 +359,18 @@
             <textarea class="input" id="p-bio" maxlength="400" placeholder="Seni sen yapan şey ne? Kartında görünür.">${esc(d.bio)}</textarea>
             <div class="counter" id="p-bio-count"></div>
           </label>
+          <div class="divider"></div>
+          <div class="switch-row">
+            <div class="txt"><b>Arkadaş modunda da görün</b><span>Flört dışında ders arkadaşı, sohbet arkadaşı arayanların destesinde de çıkarsın. Cinsiyet tercihi bu modda uygulanmaz.</span></div>
+            <label class="switch"><input type="checkbox" id="p-friend" ${d.friend_mode ? 'checked' : ''}><span class="slider"></span></label>
+          </div>
+        </div>
+
+        <div class="card stack">
+          <h3>${ic('msg')} Açılış sorusu</h3>
+          <div class="muted small">Eşleştiğin herkese ilk mesaj olarak bu soru gider. Karşı taraf cevaplayarak sohbeti başlatır, "selam nasılsın" derdi biter.</div>
+          <input class="input" id="p-opener" maxlength="${M.limits.openerMax}" placeholder="Kendi sorunu yaz ya da aşağıdan seç" value="${esc(d.opening_question)}">
+          <div class="pills" id="p-opener-sug">${M.openerSuggestions.map((q) => `<button type="button" class="pill" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
         </div>
 
         <div class="card stack">
@@ -263,7 +381,7 @@
 
         <div class="card stack">
           <h3>${ic('chat')} Sorular <span class="opt">en fazla 3</span></h3>
-          <div class="muted small">Bir soru seç, kısa ve samimi cevapla. Kartında öne çıkar.</div>
+          <div class="muted small">Bir soru seç, kısa ve samimi cevapla. İnsanlar tek bir cevabını beğenip yorum yapabilir.</div>
           ${d.prompts.map((p, i) => `
             <div class="prompt-row">
               <select class="input" data-pi="${i}"><option value="">Soru seç…</option>${M.prompts.map((q) => `<option value="${esc(q)}" ${p.q === q ? 'selected' : ''}>${esc(q)}</option>`).join('')}</select>
@@ -273,7 +391,7 @@
 
         <div class="card stack">
           <h3>${ic('lock')} Sosyal medya hesapların</h3>
-          <div class="note">${ic('shield', 'sm')}<span>Bunlar <b>asla</b> profilinde görünmez. Sadece eşleştiğin biriyle sohbet ederken, sen “Paylaş”a basarsan o kişiye gider.</span></div>
+          <div class="note">${ic('shield', 'sm')}<span>Bunlar <b>asla</b> profilinde görünmez. Sadece sohbette sen paylaşırsan ya da karşılıklı kimlik açtığınızda o kişiye gider.</span></div>
           ${M.socials.map((s) => `<div class="social-row">${siconHTML(s.id, '')}<input class="input" data-s="${s.id}" maxlength="60" placeholder="${esc(s.label)} – ${esc(s.placeholder)}" value="${esc(d.socials[s.id] || '')}"></div>`).join('')}
         </div>
 
@@ -281,6 +399,13 @@
         <div class="error center" id="p-err"></div>
 
         ${onboarding ? '' : `
+        <div class="card stack" id="p-notify">
+          <h3>${ic('bell')} Bildirimler ve uygulama</h3>
+          <div class="muted small" id="p-push-status">Kontrol ediliyor…</div>
+          <div class="row" style="flex-wrap:wrap" id="p-push-actions"></div>
+          <div class="divider"></div>
+          <div id="p-install"></div>
+        </div>
         <div class="card stack">
           <h3>${ic('user')} Hesap</h3>
           <div class="muted small">Kullanıcı adı: <b>${esc(u.username)}</b></div>
@@ -309,6 +434,9 @@
     $('#p-intent', v).onclick = (e) => { const b = e.target.closest('button'); if (!b) return; d.intent = d.intent === b.dataset.v ? '' : b.dataset.v; $$('button', e.currentTarget).forEach((x) => x.classList.toggle('on', x.dataset.v === d.intent)); };
     const bioCount = () => { $('#p-bio-count', v).textContent = `${d.bio.length}/400`; };
     $('#p-bio', v).oninput = (e) => { d.bio = e.target.value; bioCount(); }; bioCount();
+    $('#p-friend', v).onchange = (e) => { d.friend_mode = e.target.checked; };
+    $('#p-opener', v).oninput = (e) => { d.opening_question = e.target.value; };
+    $('#p-opener-sug', v).onclick = (e) => { const b = e.target.closest('[data-q]'); if (!b) return; d.opening_question = b.dataset.q; $('#p-opener', v).value = b.dataset.q; };
     $('#p-interests', v).onclick = (e) => {
       const b = e.target.closest('button'); if (!b) return;
       const val = b.dataset.v; const i = d.interests.indexOf(val);
@@ -333,19 +461,50 @@
         const first = !state.user.profile_done;
         state.user = r.user;
         toast('Profil kaydedildi.', 'ok');
-        if (first) { await loadMatches(); showView('discover'); } else { state.candidates = []; }
+        state.candidates = [];
+        if (first) { await loadMatches(); showView('discover'); }
       } catch (ex) { errEl.textContent = ex.message; } finally { btn.disabled = false; }
     };
     const lo = $('#p-logout', v); if (lo) lo.onclick = logout;
     const del = $('#p-delete', v); if (del) del.onclick = async () => {
       if (!await confirmSheet('Hesabı sil', 'Profilin, eşleşmelerin ve mesajların kalıcı olarak silinir. Bu işlem geri alınamaz.', 'Evet, sil', true)) return;
       try { await api('/me', { method: 'DELETE' }); toast('Hesabın silindi.'); state.user = null; stopPolling(); renderTopbar(); showView('auth'); }
-      catch (ex) { toast(ex.message, 'err'); }
+      catch (ex) { fail(ex); }
     };
+    if (!onboarding) renderNotifyCard();
+  }
+
+  async function renderNotifyCard() {
+    const st = $('#p-push-status'); const acts = $('#p-push-actions'); const inst = $('#p-install');
+    if (!st) return;
+    const s = await pushStatus();
+    if (!$('#p-push-status')) return;
+    const texts = {
+      on: 'Bildirimler açık. Yeni mesaj ve eşleşmelerde haber vereceğiz.',
+      off: 'Yeni eşleşme ve mesajları kaçırmamak için bildirimleri aç.',
+      denied: 'Bildirim izni bu tarayıcıda engellenmiş. Tarayıcı ayarlarından site iznini açabilirsin.',
+      unsupported: state.meta.push?.enabled
+        ? (isIOS() && !isStandalone() ? 'iPhone\'da bildirim almak için önce siteyi ana ekrana ekle (aşağıya bak).' : 'Bu tarayıcı bildirimleri desteklemiyor.')
+        : 'Bildirimler sunucuda henüz ayarlanmadı.',
+    };
+    st.textContent = texts[s];
+    acts.innerHTML = s === 'on'
+      ? `<button class="btn btn-sm" id="pn-test">${ic('bell', 'sm')} Test bildirimi</button><button class="btn btn-sm btn-ghost" id="pn-off">Kapat</button>`
+      : s === 'off' ? `<button class="btn btn-sm btn-primary" id="pn-on">${ic('bell', 'sm')} Bildirimleri aç</button>` : '';
+    const on = $('#pn-on'); if (on) on.onclick = async () => { await enablePush(); renderNotifyCard(); };
+    const off = $('#pn-off'); if (off) off.onclick = async () => { await disablePush(); renderNotifyCard(); };
+    const test = $('#pn-test'); if (test) test.onclick = async () => { try { await api('/push/test', { body: {} }); toast('Test bildirimi gönderildi.', 'ok'); } catch (ex) { fail(ex); } };
+
+    if (isStandalone()) inst.innerHTML = `<div class="muted small">${ic('check', 'sm')} Uygulama olarak açıksın.</div>`;
+    else if (state.installPrompt) {
+      inst.innerHTML = `<button class="btn btn-sm" id="pn-install">${ic('download', 'sm')} Telefona uygulama olarak yükle</button>`;
+      $('#pn-install').onclick = async () => { const p = state.installPrompt; state.installPrompt = null; p.prompt(); await p.userChoice.catch(() => {}); renderNotifyCard(); };
+    } else if (isIOS()) inst.innerHTML = `<div class="muted small">Uygulama gibi kullanmak için Safari'de <b>Paylaş</b> düğmesine, sonra <b>Ana Ekrana Ekle</b>'ye dokun.</div>`;
+    else inst.innerHTML = `<div class="muted small">Tarayıcı menüsünden <b>Uygulamayı yükle</b> / <b>Ana ekrana ekle</b> ile telefonuna kurabilirsin.</div>`;
   }
 
   // ------------------------------------------------------------ profil kartı (ortak)
-  function profileCardHTML(p, shared = []) {
+  function profileCardHTML(p, shared = [], { interactive = false } = {}) {
     const name = displayName(p);
     const subBits = [];
     if (p.first_name) subBits.push(`“${p.nickname}”`);
@@ -354,20 +513,53 @@
     const sharedSet = new Set(shared);
     const interests = p.interests || [];
     const prompts = p.prompts || [];
+    const likeBtn = (target) => (interactive ? `<button class="part-like" data-like="${esc(target)}" title="Bunu beğen ve yorum yap">${ic('heart')}</button>` : '');
+    const lm = p.likedMe;
     return `
       <div class="card-hero" style="background:linear-gradient(160deg, ${esc(p.avatar_color)}, color-mix(in srgb, ${esc(p.avatar_color)} 45%, #12101c))">
         ${shared.length ? `<span class="shared-count">${ic('sparkles')} ${shared.length} ortak ilgi</span>` : ''}
         ${p.intent ? `<span class="badge">${esc(intentLabel(p.intent))}</span>` : ''}
+        ${p.topPick ? `<span class="pick-ribbon">${ic('star')} Günün en uyumlusu</span>` : ''}
         ${avatarHTML(p, 'xl')}
         <div class="name">${esc(name)}</div>
         ${subBits.length ? `<div class="sub">${esc(subBits.join(' · '))}</div>` : ''}
       </div>
       <div class="card-body">
-        ${p.bio ? `<div><div class="section-title">Hakkında</div><div class="bio">${esc(p.bio)}</div></div>` : ''}
+        ${lm ? `<div class="liked-banner ${lm.super ? 'super' : ''}">
+          <div class="lb-title">${lm.super ? `${ic('star')} Seni süper beğendi` : `${ic('msg')} Sana yorum yaptı`}</div>
+          ${lm.comment ? `${lm.target ? `<div class="lb-quote">“${esc(lm.target)}” için</div>` : ''}<div class="lb-text">${esc(lm.comment)}</div>` : ''}
+        </div>` : ''}
+        ${p.bio ? `<div class="likeable"><div class="section-title">Hakkında</div><div class="bio">${esc(p.bio)}</div>${likeBtn('Hakkında')}</div>` : ''}
+        ${p.daily?.answer ? `<div class="qa daily likeable"><div class="q">${ic('sun', 'sm')} Günün sorusu: ${esc(state.daily?.question || '')}</div><div class="a">${esc(p.daily.answer)}</div>${likeBtn('Günün sorusu')}</div>` : ''}
+        ${p.daily?.locked && interactive ? `<div class="qa locked"><div><div class="q">${ic('lock', 'sm')} Günün sorusunu cevapladı</div><div class="small muted">Görmek için sen de cevapla.</div></div><button class="btn btn-sm" data-act="daily">Cevapla</button></div>` : ''}
         ${interests.length ? `<div><div class="section-title">İlgi alanları</div><div class="pills">${interests.map((i) => `<span class="pill ${sharedSet.has(i) ? 'shared' : ''}">${sharedSet.has(i) ? ic('check', 'sm') : ''}${esc(i)}</span>`).join('')}</div></div>` : ''}
-        ${prompts.map((q) => `<div class="qa"><div class="q">${esc(q.q)}</div><div class="a">${esc(q.a)}</div></div>`).join('')}
-        ${!p.bio && !interests.length && !prompts.length ? `<div class="muted center" style="padding:20px 0">Bu kişi gizemli kalmayı seçmiş.</div>` : ''}
+        ${prompts.map((q) => `<div class="qa likeable"><div class="q">${esc(q.q)}</div><div class="a">${esc(q.a)}</div>${likeBtn(q.q)}</div>`).join('')}
+        ${!p.bio && !interests.length && !prompts.length && !p.daily?.answer ? `<div class="muted center" style="padding:20px 0">Bu kişi gizemli kalmayı seçmiş.</div>` : ''}
       </div>`;
+  }
+
+  // ------------------------------------------------------------ günün sorusu
+  async function openDailySheet() {
+    let d;
+    try { d = await api('/daily'); } catch (ex) { return fail(ex); }
+    const el = openModal(`
+      <div class="sheet-title" style="display:flex;align-items:center;gap:8px">${ic('sun')} Günün sorusu</div>
+      <p style="margin:0 0 12px;font-weight:700;font-size:17px">${esc(d.question)}</p>
+      <div class="stack">
+        <textarea class="input" id="dq-a" maxlength="${state.meta.limits.dailyAnswerMax}" placeholder="Cevabın (herkesle değil, sadece cevaplayanlarla görünür)">${esc(d.answer || '')}</textarea>
+        <div class="muted small">Cevabın kartında ve sohbetlerinde görünür. Başkalarının cevabını görmek için senin de cevaplaman gerekir. Her gün yeni soru.</div>
+        <button class="btn btn-primary" id="dq-save">${d.answer ? 'Cevabı güncelle' : 'Cevapla'}</button>
+      </div>`);
+    $('#dq-a', el).focus();
+    $('#dq-save', el).onclick = async () => {
+      try {
+        await api('/daily', { body: { answer: $('#dq-a', el).value } });
+        closeModal(); toast('Cevabın kaydedildi.', 'ok');
+        state.daily = { ...(state.daily || {}), question: d.question, answered: true };
+        if (state.view === 'discover') { state.candidates = []; renderDiscover(); }
+        else if (state.view === 'chat' && state.chat) openChat(state.chat.matchId);
+      } catch (ex) { fail(ex); }
+    };
   }
 
   // ------------------------------------------------------------ keşfet
@@ -375,10 +567,12 @@
     if (state.discoverLoading) return;
     state.discoverLoading = true;
     try {
-      const r = await api('/discover');
+      const r = await api('/discover?mode=' + state.mode);
+      state.limits = r.limits; state.daily = r.daily;
+      state.discoverFlags = { needsFriendMode: !!r.needsFriendMode };
       const ids = new Set(state.candidates.map((c) => c.id));
       for (const c of r.candidates) if (!ids.has(c.id)) state.candidates.push(c);
-    } catch (ex) { toast(ex.message, 'err'); }
+    } catch (ex) { fail(ex); }
     finally { state.discoverLoading = false; }
   }
 
@@ -386,39 +580,85 @@
     const v = $('[data-view="discover"]');
     if (!state.user.profile_done) return showView('profile');
     if (!state.candidates.length) {
-      v.innerHTML = `<div class="spinner"></div>`;
+      v.innerHTML = `${discoverHeadHTML()}<div class="spinner"></div>`;
+      bindDiscoverHead(v);
       await loadCandidates();
       if (state.view !== 'discover') return;
     }
     renderDeck();
   }
 
+  function discoverHeadHTML() {
+    const done = state.daily?.answered;
+    return `<div class="discover-head">
+      <div class="seg" id="d-mode">
+        <button data-m="date" class="${state.mode === 'date' ? 'on' : ''}">Flört</button>
+        <button data-m="friend" class="${state.mode === 'friend' ? 'on' : ''}">Arkadaş</button>
+      </div>
+      <button class="daily-pill ${done ? 'done' : ''}" id="d-daily">${ic('sun')} Günün sorusu ${done ? ic('check', 'sm') : '<span class="dot-new"></span>'}</button>
+    </div>`;
+  }
+  function bindDiscoverHead(v) {
+    $('#d-mode', v).onclick = (e) => {
+      const b = e.target.closest('[data-m]'); if (!b || b.dataset.m === state.mode) return;
+      state.mode = b.dataset.m; store.set('md_mode', state.mode);
+      state.candidates = []; state.lastSwipe = null; renderDiscover();
+    };
+    $('#d-daily', v).onclick = openDailySheet;
+  }
+
   function renderDeck() {
     const v = $('[data-view="discover"]');
+    const L = state.limits || { likesLeft: 0, superLeft: 0 };
+    if (state.discoverFlags.needsFriendMode && state.mode === 'friend') {
+      v.innerHTML = `${discoverHeadHTML()}<div class="empty"><div class="glyph">${ic('users')}</div><h2>Arkadaş modu</h2><p>Kampüste ders arkadaşı, kahve arkadaşı, sohbet arkadaşı ara. Flört baskısı yok; cinsiyet tercihi uygulanmaz. Bu modda görünmek için açman yeterli.</p><button class="btn btn-primary" id="d-friend-on">${ic('users', 'sm')} Arkadaş modunu aç</button></div>`;
+      bindDiscoverHead(v);
+      $('#d-friend-on', v).onclick = async () => {
+        try { const r = await api('/profile', { method: 'PUT', body: profileBody({ friend_mode: true }) }); state.user = r.user; state.candidates = []; toast('Arkadaş modu açıldı.', 'ok'); renderDiscover(); }
+        catch (ex) { fail(ex); }
+      };
+      return;
+    }
     if (!state.candidates.length) {
-      v.innerHTML = `<div class="empty"><div class="glyph">${ic('ghost')}</div><h2>Şimdilik kimse yok</h2><p>Yeni öğrenciler katıldıkça burada görünecek. Profilini zenginleştirmek eşleşme şansını artırır.</p><button class="btn btn-primary" id="d-refresh">${ic('refresh', 'sm')} Yenile</button></div>`;
+      v.innerHTML = `${discoverHeadHTML()}<div class="empty"><div class="glyph">${ic('ghost')}</div><h2>Şimdilik kimse yok</h2><p>Yeni öğrenciler katıldıkça burada görünecek. ${state.mode === 'date' ? 'Arkadaş moduna da göz atabilirsin.' : ''}</p>
+        <div class="row"><button class="btn btn-primary" id="d-refresh">${ic('refresh', 'sm')} Yenile</button>${state.lastSwipe ? `<button class="btn" id="d-undo2">${ic('undo', 'sm')} Geri al</button>` : ''}</div></div>`;
+      bindDiscoverHead(v);
       $('#d-refresh', v).onclick = async () => { await loadCandidates(); renderDeck(); };
+      const u2 = $('#d-undo2', v); if (u2) u2.onclick = undoSwipe;
       return;
     }
     const top3 = state.candidates.slice(0, 3);
     v.innerHTML = `
+      ${discoverHeadHTML()}
       <div class="deck-wrap">
         <div class="deck" id="deck">
           ${top3.map((c, i) => `
             <article class="swipe-card ${i === 1 ? 'behind' : i === 2 ? 'behind2' : ''}" data-id="${c.id}" style="z-index:${10 - i}">
-              ${i === 0 ? `<div class="stamp like">BEĞEN</div><div class="stamp nope">GEÇ</div>` : ''}
-              ${profileCardHTML(c, c.sharedInterests)}
+              ${i === 0 ? `<div class="stamp like">BEĞEN</div><div class="stamp nope">GEÇ</div><div class="stamp super">SÜPER</div>` : ''}
+              ${profileCardHTML(c, c.sharedInterests, { interactive: i === 0 })}
             </article>`).reverse().join('')}
         </div>
         <div class="deck-actions">
+          <button class="btn btn-icon small" id="d-undo" title="Geri al" ${state.lastSwipe ? '' : 'disabled'}>${ic('undo')}</button>
           <button class="btn btn-icon pass" id="d-pass" title="Geç">${ic('x')}</button>
-          <button class="btn btn-icon more" id="d-more" title="Daha fazla">${ic('more')}</button>
-          <button class="btn btn-icon like" id="d-like" title="Beğen">${ic('heart')}</button>
+          <button class="btn btn-icon super" id="d-super" title="Süper beğen" ${L.superLeft > 0 ? '' : 'disabled'}>${ic('star')}</button>
+          <button class="btn btn-icon like" id="d-like" title="Beğen" ${L.likesLeft > 0 ? '' : 'disabled'}>${ic('heart')}</button>
+          <button class="btn btn-icon small" id="d-more" title="Daha fazla">${ic('more')}</button>
         </div>
+        <div class="limits-line">Bugün <b>${L.likesLeft}</b> beğeni · <b>${L.superLeft}</b> süper beğeni hakkın kaldı</div>
       </div>`;
-    attachSwipe($(`.swipe-card[data-id="${top3[0].id}"]`, v));
+    bindDiscoverHead(v);
+    const topCard = $(`.swipe-card[data-id="${top3[0].id}"]`, v);
+    attachSwipe(topCard);
+    topCard.addEventListener('click', (e) => {
+      const lb = e.target.closest('[data-like]');
+      if (lb) return openLikeSheet(top3[0], lb.dataset.like);
+      if (e.target.closest('[data-act="daily"]')) openDailySheet();
+    });
     $('#d-pass', v).onclick = () => decide('pass');
     $('#d-like', v).onclick = () => decide('like');
+    $('#d-super', v).onclick = () => decide('like', { super: true });
+    $('#d-undo', v).onclick = undoSwipe;
     $('#d-more', v).onclick = () => {
       const c = state.candidates[0];
       const el = openModal(`<div class="sheet-title">${esc(displayName(c))}</div><div class="list">
@@ -428,9 +668,35 @@
       el.onclick = async (e) => {
         const b = e.target.closest('[data-x]'); if (!b) return; closeModal();
         if (b.dataset.x === 'report') return reportUser(c);
-        if (b.dataset.x === 'block') { if (await confirmSheet('Engelle', 'Bu kişi seni bir daha göremez, sen de onu.', 'Engelle', true)) { await api('/block', { body: { userId: c.id } }); state.candidates.shift(); renderDeck(); toast('Engellendi.'); } }
+        if (b.dataset.x === 'block' && await confirmSheet('Engelle', 'Bu kişi seni bir daha göremez, sen de onu.', 'Engelle', true)) {
+          try { await api('/block', { body: { userId: c.id } }); state.candidates.shift(); state.lastSwipe = null; renderDeck(); toast('Engellendi.'); } catch (ex) { fail(ex); }
+        }
       };
     };
+  }
+
+  /** Bir cevabı / biyografiyi beğen ve isteğe bağlı yorum yaz (Hinge). */
+  function openLikeSheet(c, target) {
+    const L = state.limits || {};
+    let quote = '';
+    if (target === 'Hakkında') quote = c.bio || '';
+    else if (target === 'Günün sorusu') quote = c.daily?.answer || '';
+    else quote = (c.prompts || []).find((p) => p.q === target)?.a || '';
+    const el = openModal(`
+      <div class="sheet-title">${esc(displayName(c))} – ${esc(target)}</div>
+      <div class="qa" style="margin-bottom:12px"><div class="a">${esc(quote)}</div></div>
+      <div class="stack">
+        <textarea class="input" id="lk-c" maxlength="${state.meta.limits.commentMax}" placeholder="Bir yorum ekle (isteğe bağlı). Eşleşirseniz sohbetin ilk mesajı olur."></textarea>
+        <div class="row">
+          <button class="btn grow super-btn" id="lk-super" ${L.superLeft > 0 ? '' : 'disabled'} style="color:var(--super)">${ic('star', 'sm')} Süper beğen</button>
+          <button class="btn btn-primary grow" id="lk-like" ${L.likesLeft > 0 ? '' : 'disabled'}>${ic('heart', 'sm')} Beğen</button>
+        </div>
+        <div class="muted small center">Bugün ${L.likesLeft} beğeni · ${L.superLeft} süper beğeni hakkın var.</div>
+      </div>`);
+    $('#lk-c', el).focus();
+    const go = (isSuper) => { const comment = $('#lk-c', el).value.trim(); closeModal(); decide('like', { super: isSuper, comment, target }); };
+    $('#lk-like', el).onclick = () => go(false);
+    $('#lk-super', el).onclick = () => go(true);
   }
 
   function attachSwipe(card) {
@@ -438,7 +704,7 @@
     let startX = 0, startY = 0, dx = 0, dy = 0, active = false;
     const like = $('.stamp.like', card), nope = $('.stamp.nope', card);
     card.addEventListener('pointerdown', (e) => {
-      if (e.button !== 0) return;
+      if (e.button !== 0 || e.target.closest('button')) return; // kart içindeki butonlar sürüklemeyi başlatmaz
       active = true; startX = e.clientX; startY = e.clientY; dx = dy = 0;
       card.classList.add('dragging'); card.setPointerCapture(e.pointerId);
     });
@@ -458,29 +724,59 @@
   }
 
   let deciding = false;
-  async function decide(action) {
+  async function decide(action, opts = {}) {
     if (deciding || !state.candidates.length) return;
-    deciding = true;
+    const L = state.limits || {};
     const c = state.candidates[0];
     const card = $(`.swipe-card[data-id="${c.id}"]`);
-    if (card) { card.classList.remove('dragging'); card.style.transform = ''; card.classList.add(action === 'like' ? 'fly-right' : 'fly-left'); }
+    const resetCard = () => { if (card) { card.style.transform = ''; card.classList.remove('dragging', 'fly-left', 'fly-right', 'fly-up'); $$('.stamp', card).forEach((s) => { s.style.opacity = 0; }); } };
+    if (action === 'like' && L.likesLeft <= 0) { resetCard(); return toast('Bugünkü beğeni hakkın bitti. Gece yarısı yenilenir.', 'err'); }
+    if (opts.super && L.superLeft <= 0) { resetCard(); return toast('Bugünkü süper beğenini kullandın.', 'err'); }
+    deciding = true;
     try {
-      const r = await api('/swipe', { body: { to: c.id, action } });
+      const r = await withConfirm((confirmed) => api('/swipe', {
+        body: { to: c.id, action, mode: state.mode, super: !!opts.super, comment: opts.comment || undefined, target: opts.target || undefined, confirmed },
+      }));
+      if (card) {
+        card.classList.remove('dragging'); card.style.transform = '';
+        if (opts.super) $('.stamp.super', card).style.opacity = 1;
+        card.classList.add(opts.super ? 'fly-up' : action === 'like' ? 'fly-right' : 'fly-left');
+      }
+      state.limits = r.limits;
+      state.lastSwipe = r.matched ? null : { id: c.id, mode: state.mode };
       state.candidates.shift();
-      setTimeout(() => { renderDeck(); deciding = false; }, 220);
-      if (state.candidates.length < 3) loadCandidates().then(() => { if (state.view === 'discover' && state.candidates.length <= 2) renderDeck(); });
+      setTimeout(() => { renderDeck(); deciding = false; }, 230);
+      if (opts.super) toast('Süper beğeni gönderildi ⭐', 'ok');
+      else if (opts.comment) toast('Yorumun gönderildi. Eşleşirseniz sohbetin ilk mesajı olacak.', 'ok');
+      if (state.candidates.length < 3) loadCandidates().then(() => { if (state.view === 'discover' && state.candidates.length <= 3) renderDeck(); });
       if (r.matched) { await loadMatches(); showMatchModal(r.match); }
-    } catch (ex) { deciding = false; toast(ex.message, 'err'); renderDeck(); }
+    } catch (ex) {
+      deciding = false;
+      if (ex.data?.limits) state.limits = ex.data.limits;
+      fail(ex); renderDeck();
+    }
+  }
+
+  async function undoSwipe() {
+    const last = state.lastSwipe; if (!last) return;
+    try {
+      const r = await api('/swipe/undo', { body: { to: last.id, mode: last.mode } });
+      state.lastSwipe = null; state.limits = r.limits;
+      if (r.candidate && last.mode === state.mode) state.candidates = [r.candidate, ...state.candidates.filter((c) => c.id !== r.candidate.id)];
+      toast('Geri alındı.', 'ok');
+      renderDeck();
+    } catch (ex) { state.lastSwipe = null; fail(ex); renderDeck(); }
   }
 
   function showMatchModal(match) {
     const other = match.user;
+    const friend = match.mode === 'friend';
     const el = openModal(`
       <div class="match-modal">
-        ${ic('sparkles', 'lg sparkle')}
-        <h2>Eşleştiniz!</h2>
+        ${ic(friend ? 'users' : 'sparkles', 'lg sparkle')}
+        <h2>${friend ? 'Arkadaş oldunuz!' : 'Eşleştiniz!'}</h2>
         <div class="pair">${avatarHTML(state.user, 'lg')}${avatarHTML(other, 'lg')}</div>
-        <p class="muted">Sen ve <b>${esc(displayName(other))}</b> birbirinizi beğendiniz. Sohbete başla, hazır hissettiğinde sosyal medyanı paylaş.</p>
+        <p class="muted">Sen ve <b>${esc(displayName(other))}</b> birbirinizi beğendiniz. ${state.meta.limits.matchHours} saat içinde biri yazmazsa eşleşme sona erer.</p>
         <div class="stack">
           <button class="btn btn-primary btn-block" data-x="chat">${ic('chat', 'sm')} Mesaj gönder</button>
           <button class="btn btn-block" data-x="close">Keşfetmeye devam et</button>
@@ -496,86 +792,143 @@
     el.onclick = async (e) => {
       const b = e.target.closest('[data-x]'); if (!b) return;
       try { await api('/report', { body: { userId: p.id, reason: $('#r-reason', el).value } }); closeModal(); toast('Şikayetin alındı, teşekkürler.', 'ok'); }
-      catch (ex) { toast(ex.message, 'err'); }
+      catch (ex) { fail(ex); }
     };
   }
 
   // ------------------------------------------------------------ eşleşmeler
   async function loadMatches() {
     try { state.matches = (await api('/matches')).matches; updateUnreadBadge(); }
-    catch (ex) { toast(ex.message, 'err'); }
+    catch (ex) { fail(ex); }
+  }
+
+  function gameLabel(p) {
+    return ({ ttl: '2 doğru 1 yalan', tot: 'Bu mu o mu', question: `Soru: ${p.q || ''}`, ttl_answer: 'Tahminini yaptı', tot_answer: 'Seçimini yaptı' })[p.kind] || 'Oyun';
+  }
+  function previewOf(m) {
+    const lm = m.lastMessage;
+    if (!lm) return 'Yeni eşleşme – ilk mesajı sen at!';
+    const who = lm.mine ? 'Sen: ' : '';
+    const p = parse(lm.body);
+    switch (lm.type) {
+      case 'system': return lm.body;
+      case 'social': return lm.mine ? 'Sosyal medya paylaştın' : 'Sosyal medya paylaştı';
+      case 'opener': return (lm.mine ? 'Açılış sorun: ' : 'Açılış sorusu: ') + (p.q || '');
+      case 'comment': return who + (p.comment || '');
+      case 'game': return who + gameLabel(p);
+      case 'reveal': return p.kind === 'done' ? 'Kimlikler açıldı 🎉' : lm.mine ? 'Kimliğini açmaya hazırsın' : 'Kimliğini açmaya hazır 👀';
+      default: return who + lm.body;
+    }
   }
 
   async function renderMatches() {
     const v = $('[data-view="matches"]');
-    v.innerHTML = `<div class="spinner"></div>`;
+    if (!state.matches.length) v.innerHTML = `<div class="spinner"></div>`;
     await loadMatches();
     if (state.view !== 'matches') return;
     if (!state.matches.length) {
       v.innerHTML = `<div class="empty"><div class="glyph">${ic('chat')}</div><h2>Henüz eşleşmen yok</h2><p>Keşfet'te beğendiğin biri seni de beğenince burada görünür.</p><button class="btn btn-primary" id="m-go">Keşfet'e git</button></div>`;
       $('#m-go', v).onclick = () => showView('discover'); return;
     }
-    const fresh = state.matches.filter((m) => !m.lastMessage || m.lastMessage.type === 'system');
+    const t = Date.now();
+    const fresh = state.matches.filter((m) => m.expiresAt);
+    const turn = state.matches.filter((m) => !m.expiresAt && m.yourTurn).sort((a, b) => (a.waitingSince || 0) - (b.waitingSince || 0));
+    const rest = state.matches.filter((m) => !m.expiresAt && !m.yourTurn);
+    const item = (m) => {
+      const lm = m.lastMessage;
+      return `<button class="match-item" data-id="${m.matchId}">
+        ${avatarHTML(m.user)}
+        <div class="meta">
+          <div class="name">${esc(displayName(m.user))} ${m.user.online ? '<span class="dot" title="Çevrimiçi"></span>' : ''}
+            ${m.mode === 'friend' ? '<span class="tag-mini friend">Arkadaş</span>' : ''} ${m.yourTurn ? '<span class="tag-mini turn">Sıra sende</span>' : ''}</div>
+          <div class="preview ${m.unread ? 'unread' : ''}">${esc(previewOf(m))}</div>
+        </div>
+        <div class="stack" style="align-items:flex-end;gap:4px">
+          ${m.expiresAt ? `<span class="timer">${ic('clock')} ${fmtLeft(m.expiresAt - t)}</span>` : `<span class="time">${fmtTime(lm ? lm.at : m.matchedAt)}</span>`}
+          ${m.unread ? `<span class="badge-count">${m.unread}</span>` : ''}
+        </div>
+      </button>`;
+    };
+    const pushOff = pushSupported() && (await pushStatus()) === 'off';
+    if (state.view !== 'matches') return;
     v.innerHTML = `<div class="stack" style="padding-top:8px">
       <div class="section-head"><h2>Sohbet</h2></div>
-      ${fresh.length ? `<div><div class="section-title">Yeni eşleşmeler</div><div class="new-row">${fresh.map((m) => `<button data-id="${m.matchId}">${avatarHTML(m.user)}<span>${esc(displayName(m.user))}</span></button>`).join('')}</div></div>` : ''}
-      <div class="match-list">${state.matches.map((m) => {
-        const lm = m.lastMessage;
-        let preview = 'Yeni eşleşme – ilk mesajı sen at!';
-        if (lm) preview = lm.type === 'social' ? (lm.mine ? 'Sosyal medya paylaştın' : 'Sosyal medya paylaştı') : lm.type === 'system' ? lm.body : (lm.mine ? 'Sen: ' : '') + lm.body;
-        return `<button class="match-item" data-id="${m.matchId}">
-          ${avatarHTML(m.user)}
-          <div class="meta"><div class="name">${esc(displayName(m.user))} ${m.user.online ? '<span class="dot" title="Çevrimiçi"></span>' : ''}</div><div class="preview ${m.unread ? 'unread' : ''}">${esc(preview)}</div></div>
-          <div class="stack" style="align-items:flex-end;gap:4px"><span class="time">${fmtTime(lm ? lm.at : m.matchedAt)}</span>${m.unread ? `<span class="badge-count">${m.unread}</span>` : ''}</div>
-        </button>`;
-      }).join('')}</div></div>`;
+      ${pushOff ? `<div class="card push-card"><span class="fi">${ic('bell')}</span><div class="grow"><b>Yeni mesajları kaçırma</b><div class="small muted">Eşleşmeler ${state.meta.limits.matchHours} saatte düşüyor. Bildirimleri aç, hemen haberin olsun.</div></div><button class="btn btn-sm btn-primary" id="m-push">Aç</button></div>` : ''}
+      ${fresh.length ? `<div><div class="section-title">Yeni eşleşmeler · ${state.meta.limits.matchHours} saat içinde yaz</div><div class="new-row">${fresh.map((m) => `<button data-id="${m.matchId}">${avatarHTML(m.user)}<span>${esc(displayName(m.user))}</span><span class="timer">${ic('clock')} ${fmtLeft(m.expiresAt - t)}</span></button>`).join('')}</div></div>` : ''}
+      ${turn.length ? `<div><div class="section-title">Sıra sende · ${turn.length}</div><div class="match-list">${turn.map(item).join('')}</div></div>` : ''}
+      ${rest.length || fresh.length ? `<div><div class="section-title">Tüm sohbetler</div><div class="match-list">${[...fresh, ...rest].map(item).join('')}</div></div>` : ''}
+    </div>`;
     $$('[data-id]', v).forEach((b) => b.onclick = () => openChat(+b.dataset.id));
+    const mp = $('#m-push', v); if (mp) mp.onclick = async () => { if (await enablePush()) renderMatches(); };
   }
 
   // ------------------------------------------------------------ sohbet
   async function openChat(matchId) {
-    state.chat = { matchId, messages: [], other: null, shared: {}, hasMore: false, loading: true };
+    state.chat = { matchId, messages: [], other: null, shared: {}, info: null, hasMore: false, loading: true };
     showView('chat');
     try {
       const r = await api(`/matches/${matchId}/messages`);
-      Object.assign(state.chat, { messages: r.messages, other: r.other, shared: r.shared, hasMore: r.hasMore, loading: false });
+      Object.assign(state.chat, { messages: r.messages, other: r.other, shared: r.shared, info: r.info, hasMore: r.hasMore, loading: false });
       const m = state.matches.find((x) => x.matchId === matchId); if (m) { m.unread = 0; updateUnreadBadge(); }
       renderChat(); scrollChatBottom();
-    } catch (ex) { toast(ex.message, 'err'); showView('matches'); }
+    } catch (ex) { fail(ex); state.chat = null; showView('matches'); }
+  }
+
+  function chatStripsHTML(c) {
+    const o = c.other; const info = c.info || {};
+    const out = [];
+    if (info.expiresAt) {
+      out.push(`<div class="chat-strip expire">${ic('clock')}<div class="grow">Yeni eşleşme! <b>${fmtLeft(info.expiresAt - Date.now())}</b> içinde kimse yazmazsa sona erer.</div></div>`);
+    }
+    const rv = info.reveal || {};
+    if (!rv.done && rv.theirs && !rv.mine) {
+      out.push(`<div class="chat-strip reveal">${ic('unlock')}<div class="grow"><b>${esc(displayName(o))}</b> kimliğini açmaya hazır. Sen de hazırsan ikiniz aynı anda görünürsünüz.</div><button class="btn btn-sm btn-primary" data-act="reveal">Ben de</button></div>`);
+    } else if (!rv.done && rv.mine) {
+      out.push(`<div class="chat-strip reveal">${ic('unlock')}<div class="grow small">Kimliğini açmaya hazır olduğunu bildirdin. Karşı taraf da hazır olunca seçtiğin bilgiler aynı anda açılır.</div></div>`);
+    }
+    const d = info.daily;
+    if (d && (d.mine || d.theirs || d.theirsLocked)) {
+      let inner;
+      if (d.theirsLocked) inner = `<b>${esc(displayName(o))}</b> günün sorusunu cevapladı. Görmek için sen de cevapla.`;
+      else inner = `<b>${esc(d.question)}</b><div class="daily-answers">${d.mine ? `<div><span>Sen:</span> ${esc(d.mine)}</div>` : ''}${d.theirs ? `<div><span>${esc(displayName(o))}:</span> ${esc(d.theirs)}</div>` : `<div class="muted">${esc(displayName(o))} henüz cevaplamadı.</div>`}</div>`;
+      out.push(`<div class="chat-strip">${ic('sun')}<div class="grow small">${inner}</div>${d.theirsLocked ? '<button class="btn btn-sm" data-act="daily">Cevapla</button>' : ''}</div>`);
+    }
+    const sharedByThem = c.shared[o.id] || {}; const sharedByMe = c.shared[state.user.id] || {};
+    if (Object.keys(sharedByThem).length || Object.keys(sharedByMe).length) {
+      out.push(`<div class="shared-bar"><span class="lbl">Paylaşılan hesaplar</span>
+        ${Object.entries(sharedByThem).map(([p, h]) => { const l = socialLink(p, h); return `<span class="pill">${siconHTML(p, 'brand sm')} ${l ? `<a href="${esc(l)}" target="_blank" rel="noopener">${esc(h)}</a>` : esc(h)}</span>`; }).join('')}
+        ${Object.entries(sharedByMe).map(([p, h]) => `<span class="pill muted" title="Sen paylaştın">${siconHTML(p, 'sm')} ${esc(h)} ${ic('check', 'sm')}</span>`).join('')}
+      </div>`);
+    }
+    return out.join('');
   }
 
   function renderChat() {
     const v = $('[data-view="chat"]');
     const c = state.chat; if (!c) return showView('matches');
     if (c.loading) { v.innerHTML = `<div class="chat"><div class="spinner"></div></div>`; return; }
-    const o = c.other; const me = state.user.id;
-    const sharedByThem = c.shared[o.id] || {}; const sharedByMe = c.shared[me] || {};
-    const sharedBar = Object.keys(sharedByThem).length || Object.keys(sharedByMe).length ? `
-      <div class="shared-bar">
-        <span class="lbl">Paylaşılan hesaplar</span>
-        ${Object.entries(sharedByThem).map(([p, h]) => { const l = socialLink(p, h); return `<span class="pill">${siconHTML(p, 'brand sm')} ${l ? `<a href="${esc(l)}" target="_blank" rel="noopener">${esc(h)}</a>` : esc(h)}</span>`; }).join('')}
-        ${Object.entries(sharedByMe).map(([p, h]) => `<span class="pill muted" title="Sen paylaştın">${siconHTML(p, 'sm')} ${esc(h)} ${ic('check', 'sm')}</span>`).join('')}
-      </div>` : '';
+    const o = c.other;
+    const keep = $('#c-input')?.value || '';
     v.innerHTML = `
       <div class="chat">
         <div class="chat-head">
           <button class="btn btn-ghost btn-icon" id="c-back" title="Geri">${ic('back')}</button>
           ${avatarHTML(o)}
           <div class="grow">
-            <div class="name">${esc(displayName(o))}</div>
+            <div class="name">${esc(displayName(o))} ${c.info?.mode === 'friend' ? '<span class="tag-mini friend">Arkadaş</span>' : ''}</div>
             <div class="status" id="c-status">${o.online ? '<span class="dot"></span> Çevrimiçi' : o.last_seen ? 'Son görülme ' + fmtTime(o.last_seen) : ''}</div>
           </div>
           <button class="btn btn-ghost btn-icon" id="c-profile" title="Profili gör">${ic('user')}</button>
           <button class="btn btn-ghost btn-icon" id="c-menu" title="Daha fazla">${ic('more')}</button>
         </div>
-        ${sharedBar}
+        <div id="c-strips">${chatStripsHTML(c)}</div>
         <div class="chat-body" id="c-body">
           ${c.hasMore ? `<button class="btn btn-sm load-more" id="c-more">Önceki mesajlar</button>` : ''}
           ${c.messages.map(messageHTML).join('')}
         </div>
         <div class="typing" id="c-typing"></div>
         <div class="chat-compose">
-          <button class="btn btn-icon" id="c-share" title="Sosyal medya paylaş">${ic('link')}</button>
+          <button class="btn btn-icon" id="c-plus" title="Paylaş, kimlik aç, oyun oyna">${ic('plus')}</button>
           <textarea class="input" id="c-input" rows="1" placeholder="Mesaj yaz…" maxlength="1000"></textarea>
           <button class="btn btn-icon send" id="c-send" title="Gönder">${ic('send')}</button>
         </div>
@@ -597,14 +950,16 @@
           if (b.dataset.x === 'unmatch' && await confirmSheet('Eşleşmeyi kaldır', 'Sohbet ikiniz için de kapanır.', 'Kaldır', true)) { await api(`/matches/${c.matchId}`, { method: 'DELETE' }); state.chat = null; toast('Eşleşme kaldırıldı.'); showView('matches'); }
           if (b.dataset.x === 'block' && await confirmSheet('Engelle', 'Eşleşme kaldırılır ve bu kişi seni bir daha göremez.', 'Engelle', true)) { await api('/block', { body: { userId: o.id } }); state.chat = null; toast('Engellendi.'); showView('matches'); }
           if (b.dataset.x === 'report') reportUser(o);
-        } catch (ex) { toast(ex.message, 'err'); }
+        } catch (ex) { fail(ex); }
       };
     };
+    // şerit ve mesaj kartlarındaki düğmeler
+    v.querySelector('.chat').addEventListener('click', onChatAction);
     const input = $('#c-input', v);
+    input.value = keep;
     const autosize = () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 120) + 'px'; };
     input.oninput = () => {
       autosize();
-      // "yazıyor…" bilgisini en fazla 2,5 sn'de bir gönder
       if (input.value.trim() && Date.now() - state.typingSentAt > 2500) {
         state.typingSentAt = Date.now();
         api(`/matches/${c.matchId}/typing`, { body: {} }).catch(() => {});
@@ -612,34 +967,125 @@
     };
     input.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
     $('#c-send', v).onclick = sendMessage;
-    $('#c-share', v).onclick = openShareSheet;
+    $('#c-plus', v).onclick = openChatActions;
     const more = $('#c-more', v);
     if (more) more.onclick = async () => {
       const oldest = c.messages[0]?.id; if (!oldest) return;
-      const r = await api(`/matches/${c.matchId}/messages?before=${oldest}`);
-      c.messages = [...r.messages, ...c.messages]; c.hasMore = r.hasMore;
-      const body = $('#c-body'); const prevH = body.scrollHeight; renderChat(); const nb = $('#c-body'); nb.scrollTop = nb.scrollHeight - prevH;
+      try {
+        const r = await api(`/matches/${c.matchId}/messages?before=${oldest}`);
+        c.messages = [...r.messages, ...c.messages]; c.hasMore = r.hasMore;
+        const body = $('#c-body'); const prevH = body.scrollHeight; renderChat(); const nb = $('#c-body'); nb.scrollTop = nb.scrollHeight - prevH;
+      } catch (ex) { fail(ex); }
     };
-    setTimeout(() => input.focus({ preventScroll: true }), 50);
+    if (window.matchMedia('(min-width: 700px)').matches) setTimeout(() => input.focus({ preventScroll: true }), 50);
   }
 
-  function messageHTML(m) {
-    const mine = m.sender_id === state.user.id;
-    if (m.type === 'system') return `<div class="msg system">${esc(m.body)}</div>`;
-    if (m.type === 'social') {
-      let p = {}; try { p = JSON.parse(m.body); } catch { /* yok */ }
-      const d = socialDef(p.platform); const link = socialLink(p.platform, p.handle || '');
-      return `<div class="msg social ${mine ? 'mine' : 'theirs'}">${siconHTML(p.platform)}<div><div class="title">${mine ? 'Paylaştın' : 'Seninle paylaştı'} · ${esc(d.label)}</div><div class="handle">${link ? `<a href="${esc(link)}" target="_blank" rel="noopener">@${esc(p.handle)}</a>` : esc(p.handle)}</div></div></div>`;
-    }
-    return `<div class="msg ${mine ? 'mine' : 'theirs'}">${esc(m.body)}<span class="time">${fmtTime(m.created_at)}</span></div>`;
+  function onChatAction(e) {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const act = b.dataset.act;
+    if (act === 'reveal') openRevealSheet();
+    else if (act === 'daily') openDailySheet();
+    else if (act === 'reply') { const i = $('#c-input'); i.focus(); }
+    else if (act === 'answer') answerGame(Number(b.dataset.mid), Number(b.dataset.choice));
   }
+
+  // ---- mesaj çizimi
+  const meId = () => state.user.id;
+  const nameOf = (uid) => (uid === meId() ? 'Sen' : displayName(state.chat?.other || { nickname: '' }));
+
+  function messageHTML(m) {
+    const mine = m.sender_id === meId();
+    const side = mine ? 'mine' : 'theirs';
+    const p = m.type === 'text' || m.type === 'system' ? null : parse(m.body);
+    const time = `<span class="time">${fmtTime(m.created_at)}</span>`;
+    switch (m.type) {
+      case 'system': return `<div class="msg system" data-mid="${m.id}">${esc(m.body)}</div>`;
+      case 'social': {
+        const d = socialDef(p.platform); const link = socialLink(p.platform, p.handle || '');
+        return `<div class="msg social ${side}" data-mid="${m.id}">${siconHTML(p.platform)}<div><div class="title">${mine ? 'Paylaştın' : 'Seninle paylaştı'} · ${esc(d.label)}</div><div class="handle">${link ? `<a href="${esc(link)}" target="_blank" rel="noopener">@${esc(p.handle)}</a>` : esc(p.handle)}</div></div></div>`;
+      }
+      case 'comment':
+        return `<div class="msg card ${side}" data-mid="${m.id}"><div class="title">${ic('heart')} ${mine ? 'Yorumun' : 'Profiline yorum'}</div>${p.target ? `<div class="quote">${esc(p.target)}</div>` : ''}<div>${esc(p.comment)}</div>${time}</div>`;
+      case 'opener': {
+        const replied = !mine && state.chat.messages.some((x) => x.sender_id === meId() && x.type === 'text' && x.id > m.id);
+        return `<div class="msg card ${side}" data-mid="${m.id}"><div class="title">${ic('msg')} ${mine ? 'Açılış sorun' : 'Açılış sorusu'}</div><div class="q">${esc(p.q)}</div>
+          ${!mine && !replied ? '<div class="actions-row"><button class="btn btn-sm btn-primary" data-act="reply">Cevapla</button></div>' : ''}</div>`;
+      }
+      case 'reveal': return revealHTML(m, p, mine);
+      case 'game': return gameHTML(m, p, mine);
+      default: return `<div class="msg ${side}" data-mid="${m.id}">${esc(m.body)}${time}</div>`;
+    }
+  }
+
+  function revealHTML(m, p, mine) {
+    if (p.kind === 'request') {
+      return `<div class="msg system" data-mid="${m.id}">${ic('unlock', 'sm')} ${mine ? 'Kimliğini açmaya hazır olduğunu bildirdin.' : `${esc(displayName(state.chat.other))} kimliğini açmaya hazır.`}</div>`;
+    }
+    const people = Object.entries(p.people || {}).sort(([a]) => (Number(a) === meId() ? 1 : -1));
+    return `<div class="reveal-card" data-mid="${m.id}"><h4>${ic('unlock')} Kimlikler açıldı 🎉</h4><div class="reveal-people">
+      ${people.map(([uid, info]) => `<div class="reveal-person"><div class="who">${Number(uid) === meId() ? 'Sen' : esc(state.chat.other.nickname)}</div>
+        ${info.name ? `<div class="nm">${esc(info.name)}</div>` : ''}
+        ${Object.entries(info.socials || {}).map(([pl, h]) => { const l = socialLink(pl, h); return `<div class="soc">${siconHTML(pl, 'brand sm')} ${l ? `<a href="${esc(l)}" target="_blank" rel="noopener">@${esc(h)}</a>` : esc(h)}</div>`; }).join('')}
+      </div>`).join('')}
+    </div></div>`;
+  }
+
+  function gameHTML(m, p, mine) {
+    const side = mine ? 'mine' : 'theirs';
+    if (p.kind === 'ttl') {
+      const opts = p.statements.map((s, i) => {
+        if (!mine && !p.answered) return `<button class="game-opt" data-act="answer" data-mid="${m.id}" data-choice="${i}">${esc(s)}</button>`;
+        const isLie = p.lie === i; const picked = p.answered && p.choice === i;
+        return `<div class="game-opt ${isLie ? 'lie' : ''} ${picked ? 'picked' : ''}"><span>${esc(s)}</span>${isLie ? '<span class="tag-mini">yalan</span>' : ''}</div>`;
+      }).join('');
+      let result = '';
+      if (p.answered) {
+        const text = mine
+          ? `${esc(displayName(state.chat.other))} ${p.correct ? 'yalanı buldu! 🎉' : 'yanıldı 😅'}`
+          : (p.correct ? 'Yalanı buldun! 🎉' : 'Yanıldın 😅');
+        result = `<div class="game-result ${p.correct ? 'good' : 'meh'}">${text}</div>`;
+      }
+      else if (mine) result = `<div class="small muted" style="margin-top:6px">Tahmin bekleniyor…</div>`;
+      return `<div class="msg card ${side}" data-mid="${m.id}"><div class="title">${ic('dice')} 2 doğru 1 yalan</div>${!mine && !p.answered ? '<div class="small">Hangisi yalan?</div>' : ''}<div class="game-opts">${opts}</div>${result}</div>`;
+    }
+    if (p.kind === 'tot') {
+      const answered = p.answer != null;
+      const opts = p.options.map((o, i) => {
+        if (!mine && !answered) return `<button class="game-opt" data-act="answer" data-mid="${m.id}" data-choice="${i}">${esc(o)}</button>`;
+        const marks = [];
+        if (p.senderPick === i) marks.push(mine ? 'Sen' : esc(displayName(state.chat.other)));
+        if (answered && p.answer === i) marks.push(mine ? esc(displayName(state.chat.other)) : 'Sen');
+        return `<div class="game-opt ${marks.length ? 'picked' : ''}"><span>${esc(o)}</span>${marks.length ? `<span class="small muted">${marks.join(' · ')}</span>` : ''}</div>`;
+      }).join('');
+      const result = answered ? `<div class="game-result ${p.answer === p.senderPick ? 'good' : 'meh'}">${p.answer === p.senderPick ? 'Aynı seçim! 💞' : 'Farklı seçtiniz, konuşacak konu çıktı 😄'}</div>`
+        : mine ? '<div class="small muted" style="margin-top:6px">Seçim bekleniyor…</div>' : '';
+      return `<div class="msg card ${side}" data-mid="${m.id}"><div class="title">${ic('scale')} Bu mu o mu?</div><div class="tot-opts">${opts}</div>${result}</div>`;
+    }
+    if (p.kind === 'question') {
+      return `<div class="msg card ${side}" data-mid="${m.id}"><div class="title">${ic('help')} Rastgele soru</div><div class="q">${esc(p.q)}</div>
+        <div class="small muted" style="margin-top:4px">İkiniz de cevaplayın!</div></div>`;
+    }
+    if (p.kind === 'ttl_answer' || p.kind === 'tot_answer') {
+      const what = p.kind === 'ttl_answer' ? 'Tahminini' : 'Seçimini';
+      const text = mine ? `${what} yaptın` : `${esc(nameOf(m.sender_id))} ${what.toLocaleLowerCase('tr')} yaptı`;
+      return `<div class="msg game-line" data-mid="${m.id}">${ic('dice', 'sm')} ${text}</div>`;
+    }
+    return `<div class="msg ${side}" data-mid="${m.id}">${esc(gameLabel(p))}</div>`;
+  }
+
   function scrollChatBottom() { const b = $('#c-body'); if (b) b.scrollTop = b.scrollHeight; }
   function appendMessage(m) {
     const body = $('#c-body'); if (!body) return;
-    const nearBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 120;
+    const nearBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 140;
     body.insertAdjacentHTML('beforeend', messageHTML(m));
-    if (nearBottom || m.sender_id === state.user.id) scrollChatBottom();
+    if (nearBottom || m.sender_id === meId()) scrollChatBottom();
   }
+  function refreshMessage(id) {
+    const c = state.chat; const m = c?.messages.find((x) => x.id === id);
+    const node = $(`#c-body [data-mid="${id}"]`);
+    if (m && node) node.outerHTML = messageHTML(m);
+  }
+  function refreshStrips() { const s = $('#c-strips'); if (s && state.chat) s.innerHTML = chatStripsHTML(state.chat); }
 
   async function sendMessage() {
     const c = state.chat; const input = $('#c-input'); if (!c || !input) return;
@@ -647,9 +1093,116 @@
     input.value = ''; input.style.height = 'auto';
     state.typingSentAt = 0;
     try {
-      const r = await api(`/matches/${c.matchId}/messages`, { body: { body } });
+      const r = await withConfirm((confirmed) => api(`/matches/${c.matchId}/messages`, { body: { body, confirmed } }));
       receiveMessage(c.matchId, r.message);
-    } catch (ex) { toast(ex.message, 'err'); input.value = body; }
+      // opener "Cevapla" düğmesi kaybolsun, süre şeridi kalksın
+      if (c.info) c.info.expiresAt = null;
+      refreshStrips();
+      c.messages.filter((x) => x.type === 'opener').forEach((x) => refreshMessage(x.id));
+    } catch (ex) { input.value = body; fail(ex); }
+  }
+
+  // ---- "+" menüsü: paylaş, kimlik aç, oyunlar
+  function openChatActions() {
+    const rv = state.chat.info?.reveal || {};
+    const el = openModal(`<div class="sheet-title">Sohbete ekle</div><div class="list action-list">
+      <button class="btn" data-a="share">${ic('link')}<span>Sosyal medya paylaş<small>Tek taraflı: seçtiğin hesabı hemen gönderirsin.</small></span></button>
+      <button class="btn" data-a="reveal" ${rv.done ? 'disabled' : ''}>${ic('unlock')}<span>Karşılıklı kimlik açma<small>${rv.done ? 'Kimlikler açıldı.' : rv.mine ? 'Hazırsın; bilgilerini güncelleyebilirsin.' : 'İkiniz de hazır olunca isim ve hesaplar aynı anda açılır.'}</small></span></button>
+      <button class="btn" data-a="ttl">${ic('dice')}<span>2 doğru 1 yalan<small>Üç cümle yaz, hangisinin yalan olduğunu tahmin etsin.</small></span></button>
+      <button class="btn" data-a="tot">${ic('scale')}<span>Bu mu o mu?<small>İki seçenek, ikiniz de seçin.</small></span></button>
+      <button class="btn" data-a="question">${ic('help')}<span>Rastgele soru<small>Sohbet tıkanınca buz kırıcı bir soru.</small></span></button>
+    </div>`);
+    el.onclick = (e) => {
+      const b = e.target.closest('[data-a]'); if (!b || b.disabled) return;
+      const a = b.dataset.a; closeModal();
+      if (a === 'share') openShareSheet();
+      else if (a === 'reveal') openRevealSheet();
+      else if (a === 'ttl') openTtlSheet();
+      else if (a === 'tot') openTotSheet();
+      else if (a === 'question') sendGame({ kind: 'question' });
+    };
+  }
+
+  async function sendGame(body) {
+    const c = state.chat;
+    try {
+      const r = await withConfirm((confirmed) => api(`/matches/${c.matchId}/games`, { body: { ...body, confirmed } }));
+      closeModal();
+      receiveMessage(c.matchId, r.message);
+      if (c.info) { c.info.expiresAt = null; refreshStrips(); }
+      return true;
+    } catch (ex) { fail(ex); return false; }
+  }
+
+  function openTtlSheet() {
+    const el = openModal(`
+      <div class="sheet-title">${ic('dice')} 2 doğru 1 yalan</div>
+      <p class="muted small" style="margin:0 0 12px">Kendin hakkında üç cümle yaz. Birini yalan olarak işaretle; karşı taraf hangisi olduğunu tahmin etsin.</p>
+      <div class="stack">
+        ${[0, 1, 2].map((i) => `<div class="radio-row"><input class="input" data-st="${i}" maxlength="100" placeholder="${i + 1}. cümle"><label><input type="radio" name="lie" value="${i}" ${i === 2 ? 'checked' : ''}> yalan</label></div>`).join('')}
+        <button class="btn btn-primary" id="ttl-send">Gönder</button>
+      </div>`);
+    $('#ttl-send', el).onclick = () => sendGame({
+      kind: 'ttl',
+      statements: $$('[data-st]', el).map((x) => x.value.trim()),
+      lie: Number($('input[name=lie]:checked', el).value),
+    });
+  }
+
+  function openTotSheet() {
+    const pairs = state.meta.thisOrThat;
+    let pick = 0;
+    const el = openModal(`
+      <div class="sheet-title">${ic('scale')} Bu mu o mu?</div>
+      <div class="pills" id="tot-sug" style="margin-bottom:12px">${pairs.map((p, i) => `<button type="button" class="pill" data-i="${i}">${esc(p[0])} / ${esc(p[1])}</button>`).join('')}</div>
+      <div class="stack">
+        <div class="row"><input class="input grow" id="tot-a" maxlength="40" placeholder="Birinci seçenek"><input class="input grow" id="tot-b" maxlength="40" placeholder="İkinci seçenek"></div>
+        <label class="field">Senin seçimin<div class="seg neutral" id="tot-pick"><button type="button" data-p="0" class="on">Birinci</button><button type="button" data-p="1">İkinci</button></div></label>
+        <button class="btn btn-primary" id="tot-send">Gönder</button>
+      </div>`);
+    const setLabels = () => {
+      const [b0, b1] = $$('#tot-pick button', el);
+      b0.textContent = $('#tot-a', el).value.trim() || 'Birinci'; b1.textContent = $('#tot-b', el).value.trim() || 'İkinci';
+    };
+    $('#tot-sug', el).onclick = (e) => { const b = e.target.closest('[data-i]'); if (!b) return; const p = pairs[+b.dataset.i]; $('#tot-a', el).value = p[0]; $('#tot-b', el).value = p[1]; setLabels(); };
+    $('#tot-a', el).oninput = setLabels; $('#tot-b', el).oninput = setLabels;
+    $('#tot-pick', el).onclick = (e) => { const b = e.target.closest('[data-p]'); if (!b) return; pick = +b.dataset.p; $$('#tot-pick button', el).forEach((x) => x.classList.toggle('on', x === b)); };
+    $('#tot-send', el).onclick = () => sendGame({ kind: 'tot', options: [$('#tot-a', el).value.trim(), $('#tot-b', el).value.trim()], pick });
+  }
+
+  async function answerGame(msgId, choice) {
+    const c = state.chat;
+    try {
+      const r = await api(`/matches/${c.matchId}/games/${msgId}/answer`, { body: { choice } });
+      const g = c.messages.find((x) => x.id === msgId); if (g) g.body = r.game.body;
+      refreshMessage(msgId);
+      receiveMessage(c.matchId, r.message);
+    } catch (ex) { fail(ex); }
+  }
+
+  function openRevealSheet() {
+    const c = state.chat; const u = state.user;
+    const socials = state.meta.socials.filter((s) => u.socials?.[s.id]);
+    const defName = [u.first_name, u.last_name].filter(Boolean).join(' ');
+    const el = openModal(`
+      <div class="sheet-title">${ic('unlock')} Karşılıklı kimlik açma</div>
+      <p class="muted small" style="margin:0 0 12px">Seçtiğin bilgiler <b>${esc(displayName(c.other))}</b> da hazır olduğunda, ikinize <b>aynı anda</b> gösterilir. O hazır olana kadar hiçbir şey görmez.</p>
+      <div class="stack">
+        <label class="field">Gerçek adın (isteğe bağlı)<input class="input" id="rv-name" maxlength="60" value="${esc(defName)}" placeholder="Ör. Ayşe Yılmaz"></label>
+        ${socials.length ? `<div class="section-title" style="margin:4px 0 0">Açılacak hesaplar</div>${socials.map((s) => `<label class="check-row"><input type="checkbox" data-rs="${s.id}" checked> ${siconHTML(s.id, 'brand sm')} ${esc(s.label)} · @${esc(u.socials[s.id])}</label>`).join('')}`
+          : `<div class="note">${ic('info', 'sm')}<span>Profilinde kayıtlı sosyal medya hesabın yok. Profil sayfasından ekleyebilirsin; şimdilik sadece adını açabilirsin.</span></div>`}
+        <button class="btn btn-primary" id="rv-go">Hazırım</button>
+      </div>`);
+    $('#rv-go', el).onclick = async () => {
+      try {
+        const r = await api(`/matches/${c.matchId}/reveal`, { body: { name: $('#rv-name', el).value.trim(), socials: $$('[data-rs]:checked', el).map((x) => x.dataset.rs) } });
+        closeModal();
+        c.info.reveal = r.reveal;
+        if (r.message) receiveMessage(c.matchId, r.message);
+        refreshStrips();
+        toast(r.reveal.done ? 'Kimlikler açıldı! 🎉' : 'Hazır olduğunu bildirdik. Karşı taraf da hazır olunca açılacak.', 'ok');
+      } catch (ex) { fail(ex); }
+    };
   }
 
   function openShareSheet() {
@@ -658,7 +1211,7 @@
     const entries = state.meta.socials.filter((s) => socials[s.id]);
     const el = openModal(`
       <div class="sheet-title">Sosyal medyanı paylaş</div>
-      <p class="muted small" style="margin:0 0 12px">Seçtiğin hesap sadece <b>${esc(displayName(c.other))}</b> ile bu sohbette paylaşılır. Dilediğin zaman, dilediğin kadarını.</p>
+      <p class="muted small" style="margin:0 0 12px">Seçtiğin hesap sadece <b>${esc(displayName(c.other))}</b> ile bu sohbette paylaşılır. Karşılıklı açmak istersen "Karşılıklı kimlik açma"yı kullan.</p>
       <div class="list">
         ${entries.map((s) => `<button class="btn" data-p="${s.id}" ${already[s.id] ? 'disabled' : ''}>${siconHTML(s.id, 'brand sm')} <span class="grow" style="text-align:left">${esc(s.label)} · @${esc(socials[s.id])}</span> ${already[s.id] ? ic('check', 'sm') : ''}</button>`).join('')}
         ${entries.length ? '' : `<div class="note">${ic('info', 'sm')}<span>Henüz kayıtlı hesabın yok. Aşağıdan hemen ekleyip paylaşabilirsin.</span></div>`}
@@ -680,7 +1233,7 @@
         receiveMessage(c.matchId, r.message);
         if (handle) { state.user.socials = { ...(state.user.socials || {}), [platform]: handle.replace(/^@/, '') }; }
         closeModal(); toast('Paylaşıldı.', 'ok');
-      } catch (ex) { toast(ex.message, 'err'); }
+      } catch (ex) { fail(ex); }
     };
   }
 
@@ -718,17 +1271,15 @@
     const current = new Set(r.matchIds);
     if (!first) {
       for (const msg of r.messages) receiveMessage(msg.match_id, msg, { fromPoll: true });
-      // kaldırılan eşleşmeler (karşı taraf kaldırdı / engelledi / banlandı)
       const removed = [...poll.known].filter((id) => !current.has(id));
       if (removed.length) {
-        if (state.chat && removed.includes(state.chat.matchId)) { state.chat = null; toast('Bu eşleşme artık aktif değil.'); showView('matches'); }
+        if (state.chat && removed.includes(state.chat.matchId)) { state.chat = null; toast('Bu eşleşme sona erdi.'); showView('matches'); }
         else loadMatches().then(() => { if (state.view === 'matches') renderMatches(); });
       }
     }
     poll.known = current;
     poll.cursor = Math.max(poll.cursor ?? 0, r.cursor);
 
-    // açık sohbet: çevrimiçi ve "yazıyor…" durumu
     const c = state.chat;
     if (r.chat && c && c.matchId === r.chat.matchId && c.other) {
       c.other.online = r.chat.online; c.other.last_seen = r.chat.last_seen;
@@ -740,17 +1291,37 @@
 
   /** Yeni bir mesajı (kendi gönderdiğimiz ya da yoklamadan gelen) ekrana işler; aynı mesajı iki kez eklemez. */
   function receiveMessage(matchId, message, { fromPoll = false } = {}) {
-    const mine = message.sender_id === state.user.id;
+    const mine = message.sender_id === meId();
     const c = state.chat;
     if (c && c.matchId === matchId && !c.loading) {
       if (c.messages.some((m) => m.id === message.id)) return;
       c.messages.push(message);
+      const p = message.type === 'text' || message.type === 'system' ? null : parse(message.body);
       if (message.type === 'social') {
-        let p = {}; try { p = JSON.parse(message.body); } catch { /* yok */ }
         (c.shared[message.sender_id] ||= {})[p.platform] = p.handle;
-        renderChat(); scrollChatBottom();
+        refreshStrips(); appendMessage(message);
+      } else if (message.type === 'reveal') {
+        if (p.kind === 'done') {
+          c.info.reveal = { mine: true, theirs: true, done: true };
+          for (const [uid, info] of Object.entries(p.people || {})) Object.assign((c.shared[uid] ||= {}), info.socials || {});
+        } else if (!mine) c.info.reveal = { ...(c.info.reveal || {}), theirs: true };
+        refreshStrips(); appendMessage(message);
+      } else if (message.type === 'game' && (p.kind === 'ttl_answer' || p.kind === 'tot_answer')) {
+        const g = c.messages.find((x) => x.id === p.ref);
+        if (g) {
+          const gb = parse(g.body);
+          if (p.kind === 'ttl_answer') Object.assign(gb, { answered: true, choice: p.choice, correct: p.correct, lie: p.lie });
+          else Object.assign(gb, { answer: p.choice, senderPick: p.senderPick });
+          g.body = JSON.stringify(gb);
+          refreshMessage(g.id);
+        }
+        appendMessage(message);
       } else appendMessage(message);
-      if (!mine) { const t = $('#c-typing'); if (t) t.textContent = ''; api(`/matches/${matchId}/read`, { body: {} }).catch(() => {}); }
+      if (!mine) {
+        if (c.info?.expiresAt && message.type !== 'opener') { c.info.expiresAt = null; refreshStrips(); }
+        const t = $('#c-typing'); if (t) t.textContent = '';
+        api(`/matches/${matchId}/read`, { body: {} }).catch(() => {});
+      }
       return;
     }
     if (!fromPoll || mine) return;
@@ -759,18 +1330,20 @@
       // karşı taraf beğenimize karşılık verdi: yeni eşleşme
       loadMatches().then(() => {
         const nm = state.matches.find((x) => x.matchId === matchId);
-        if (nm) showMatchModal({ matchId, user: nm.user });
+        if (nm) showMatchModal({ matchId, user: nm.user, mode: nm.mode });
         if (state.view === 'matches') renderMatches();
       });
       return;
     }
+    if (message.type === 'opener' || message.type === 'comment') return; // eşleşmeyle birlikte gelir
     if (m) { m.unread = (m.unread || 0) + 1; updateUnreadBadge(); if (state.view === 'matches') renderMatches(); }
     else loadMatches().then(() => { if (state.view === 'matches') renderMatches(); });
-    toast('Yeni mesaj');
+    toast(message.type === 'reveal' ? 'Biri kimliğini açmaya hazır 👀' : message.type === 'game' ? 'Yeni bir oyun daveti 🎲' : 'Yeni mesaj');
   }
 
   // ------------------------------------------------------------ başlat
   (async () => {
+    registerSW();
     try { state.meta = await api('/meta'); }
     catch (ex) {
       document.body.innerHTML = `<div style="max-width:420px;margin:15vh auto;padding:24px;font-family:Inter,sans-serif;color:#f5f4fa;text-align:center">

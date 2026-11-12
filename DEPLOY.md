@@ -27,19 +27,29 @@ Tabloları elle oluşturmana gerek yok. Site ilk açıldığında tabloları ken
 
 ---
 
-## 2. Admin şifresi üret
+## 2. Admin şifresi ve bildirim anahtarları üret
 
-Kendi bilgisayarında PowerShell'de çalıştır ve çıkan metni not et:
+Kendi bilgisayarında, proje klasöründe (`npm install` yapılmış olmalı) PowerShell'de çalıştır. Çıkan değerleri not et.
+
+Admin şifresi:
 
 ```powershell
 node -e "console.log(require('crypto').randomBytes(18).toString('base64url'))"
 ```
 
+Bildirim (Web Push) anahtarları; `publicKey` ve `privateKey` diye iki değer verir:
+
+```powershell
+node -e "console.log(require('web-push').generateVAPIDKeys())"
+```
+
+`privateKey` bir şifre gibidir, kimseyle paylaşma ve depoya yükleme.
+
 ---
 
 ## 3. Vercel'de ortam değişkenlerini gir
 
-Vercel'de projeni aç: **Settings → Environment Variables**. Aşağıdaki dört değişkeni ekle. Ortam olarak **Production**, **Preview** ve **Development** üçü de seçili kalsın.
+Vercel'de projeni aç: **Settings → Environment Variables**. Aşağıdaki değişkenleri ekle. Ortam olarak **Production**, **Preview** ve **Development** üçü de seçili kalsın.
 
 | Ad (Key) | Değer (Value) |
 | --- | --- |
@@ -47,6 +57,11 @@ Vercel'de projeni aç: **Settings → Environment Variables**. Aşağıdaki dör
 | `TURSO_AUTH_TOKEN` | Turso'dan kopyaladığın token |
 | `ADMIN_USERNAME` | `admin` (istersen başka bir ad) |
 | `ADMIN_PASSWORD` | 2. adımda ürettiğin şifre |
+| `VAPID_PUBLIC_KEY` | 2. adımdaki `publicKey` |
+| `VAPID_PRIVATE_KEY` | 2. adımdaki `privateKey` |
+| `VAPID_SUBJECT` | Sitenin adresi, ör. `https://PROJEN.vercel.app` |
+
+Son üç değişken olmazsa site yine çalışır, sadece bildirimler kapalı kalır. `COOKIE_SECURE` değişkenini Vercel'e **ekleme**; orada otomatik olarak güvenli çerez kullanılır.
 
 > Değişken adları birebir aynı olmalı (büyük harf, alt çizgi). Başında ya da sonunda boşluk kalmasın.
 
@@ -81,11 +96,21 @@ Ortam değişkenleri sadece **yeni** bir yayında devreye girer.
 
 1. `https://PROJEN.vercel.app/api/health` adresini aç. Şunu görmelisin:
    ```json
-   {"ok":true,"db":"bağlı"}
+   {"ok":true,"db":"bağlı","push":"açık"}
    ```
+   `push` "kapalı" yazıyorsa `VAPID_` değişkenleri eksik ya da yeniden yayınlanmamış.
 2. Ana sayfayı aç, hesap oluştur, profilini kaydet.
 3. Başka bir tarayıcıdan (ya da gizli pencereden) ikinci bir hesap aç. İki hesap birbirini beğensin, eşleşsin ve mesajlaşsın. Mesajlar birkaç saniye içinde karşıya düşer.
 4. `https://PROJEN.vercel.app/admin` adresine git ve 3. adımdaki admin bilgileriyle giriş yap.
+5. Telefonda **Profil → Bildirimler ve uygulama → Bildirimleri aç** de, sonra **Test bildirimi**'ne bas. Telefona bildirim gelmeli.
+   - **Android (Chrome):** doğrudan çalışır.
+   - **iPhone (iOS 16.4 ve üstü):** önce Safari'de **Paylaş → Ana Ekrana Ekle** ile siteyi uygulama olarak kur, sonra ana ekrandaki simgeden açıp bildirimleri aç. Safari sekmesinde bildirim çalışmaz; bu Apple'ın kuralı.
+
+---
+
+## Güncelleme yayınlarken: veritabanı geçişi
+
+Yeni bir sürüm ilk kez açıldığında veritabanı tabloları otomatik olarak güncellenir. Örneğin bu sürüm, yorumlu beğeniler ve oyunlar için yeni sütunlar ve tablolar ekliyor. Mevcut kullanıcılar, eşleşmeler ve mesajlar korunur ve işlem yarıda kalırsa hiçbir şey değişmez. Yine de önemli bir güncellemeden önce Turso panelinden yedek almak iyi bir alışkanlıktır.
 
 ---
 
@@ -110,6 +135,7 @@ Vercel'de **Settings → Domains → Add** ile alan adını ekle. Vercel sana DN
 
 ## Bilmen gerekenler
 
+- **Günlük sınırlar ve saat.** Beğeni (25) ve süper beğeni (1) hakları Türkiye saatiyle gece yarısı yenilenir. Değerleri değiştirmek için `server/meta.js` içindeki `LIMITS` bölümüne bak. Eşleşmenin kimse yazmazsa düşme süresi (48 saat) de orada.
 - **Canlı sohbet nasıl çalışıyor?** Vercel kalıcı bağlantıları (WebSocket) desteklemez. Bu yüzden tarayıcı, sohbet açıkken 2,5 saniyede bir, diğer ekranlarda 7 saniyede bir "yeni mesaj var mı?" diye sorar. Sekme arka plandayken bu süre 30 saniyeye çıkar.
 - **Ücretsiz plan sınırları.** Vercel'in ücretsiz (Hobby) planı ticari olmayan kullanım içindir ve aylık fonksiyon çağrısı sınırı vardır. Turso'nun ücretsiz planının da aylık okuma/yazma ve depolama sınırları var. Kullanıcı sayısı çok artarsa iki paneldeki kullanım ekranlarını takip et.
 - **Yedekleme.** Turso panelinde veritabanının belirli bir ana geri dönme (point-in-time restore) özelliği bulunur. Ek olarak ara sıra Turso panelinden ya da Turso CLI ile (`turso db shell medipoldate .dump > yedek.sql`) yedek almanı öneririm.

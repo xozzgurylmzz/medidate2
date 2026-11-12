@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 process.chdir(path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
 const { ensureDb, get, all, run, now, isRemote } = await import('./db.js');
-const { INTERESTS, PROMPTS, DEPARTMENTS, randomNickname, randomAvatar, randomColor } = await import('./meta.js');
+const { INTERESTS, PROMPTS, DEPARTMENTS, OPENER_SUGGESTIONS, randomNickname, randomAvatar, randomColor } = await import('./meta.js');
 
 if (isRemote && !process.argv.includes('--allow-remote')) {
   console.error('Durduruldu: TURSO_DATABASE_URL tanımlı. Canlı veritabanına şifresi bilinen test hesapları eklemek tehlikeli.');
@@ -49,23 +49,33 @@ for (let i = 1; i <= total; i++) {
   const socials = {};
   if (Math.random() < 0.8) socials.instagram = `${username}_insta`;
   if (Math.random() < 0.4) socials.x = `${username}_x`;
-  await run(`INSERT INTO users (username, password_hash, created_at, last_seen, nickname, avatar, avatar_color,
-        first_name, last_name, age, department, gender, looking_for, intent, bio, interests, prompts, socials, profile_done)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+  const r = await run(`INSERT INTO users (username, password_hash, created_at, last_seen, nickname, avatar, avatar_color,
+        first_name, last_name, age, department, gender, looking_for, intent, bio, interests, prompts, socials, friend_mode, opening_question, profile_done)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
     username, hashPassword(PASSWORD), now(), now(), randomNickname(), randomAvatar(), randomColor(),
     showName ? one(names[gender]) : null, showName && Math.random() < 0.3 ? 'Y.' : null,
     Math.random() < 0.8 ? 18 + Math.floor(Math.random() * 8) : null,
     Math.random() < 0.85 ? one(DEPARTMENTS) : null,
     gender, one(['kadin', 'erkek', 'herkes', 'herkes']), one(['ciddi', 'flort', 'arkadas', 'bilmiyorum']),
-    one(bios) || null, JSON.stringify(pick(INTERESTS, 3 + Math.floor(Math.random() * 7))), JSON.stringify(prompts), JSON.stringify(socials));
+    one(bios) || null, JSON.stringify(pick(INTERESTS, 3 + Math.floor(Math.random() * 7))), JSON.stringify(prompts), JSON.stringify(socials),
+    Math.random() < 0.5 ? 1 : 0, Math.random() < 0.5 ? one(OPENER_SUGGESTIONS) : null);
+  // yarısı günün sorusunu cevaplamış olsun
+  if (Math.random() < 0.5) {
+    await run('INSERT OR IGNORE INTO daily_answers (user_id, day, answer, created_at) VALUES (?, ?, ?, ?)',
+      r.lastInsertRowid, new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10),
+      one(['Kütüphanede uyuyakaldım', 'Kahve, her zaman kahve', 'Hocanın esprisi', 'Bir kedi kucağıma oturdu', 'Henüz bir şey olmadı']), now());
+  }
   created++;
 }
 
-// test1'i birkaç kişi önceden beğensin ki eşleşme hemen denenebilsin
+// test1'i birkaç kişi önceden beğensin (biri süper, biri yorumlu) ki özellikler hemen denenebilsin
 const u1 = await get('SELECT id FROM users WHERE username = ?', 'test1');
 if (u1) {
-  for (const o of await all('SELECT id FROM users WHERE id != ? AND profile_done = 1 LIMIT 8', u1.id)) {
-    await run('INSERT OR IGNORE INTO swipes (from_user, to_user, action, created_at) VALUES (?, ?, ?, ?)', o.id, u1.id, 'like', now());
+  const likers = await all('SELECT id FROM users WHERE id != ? AND profile_done = 1 LIMIT 8', u1.id);
+  for (const [i, o] of likers.entries()) {
+    await run(`INSERT OR IGNORE INTO swipes (from_user, to_user, mode, action, super, target, comment, created_at)
+      VALUES (?, ?, 'date', 'like', ?, ?, ?, ?)`, o.id, u1.id, i === 0 ? 1 : 0,
+    i === 1 ? 'Hakkında' : null, i === 1 ? 'Profilin çok samimi, bir kahve içelim mi?' : null, now());
   }
 }
 console.log(`${created} test kullanıcısı eklendi. Giriş: test1 … test${total} / şifre: ${PASSWORD}`);

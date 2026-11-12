@@ -11,6 +11,17 @@ Ankara Medipol Üniversitesi öğrencilerine özel, **fotoğrafsız ve anonim** 
 - **Kaydır-beğen:** Kartı sağa/sola sürükle ya da ✕ / ♥ butonlarını kullan. Karşılıklı beğenide eşleşme ekranı çıkar.
 - **Canlı sohbet:** Birkaç saniyelik yoklama (polling) ile yeni mesajlar, "yazıyor…" göstergesi, çevrimiçi durumu, okunmamış sayacı. Vercel gibi sunucusuz ortamlarda da çalışır.
 - **Sosyal medya kontrol sende:** Instagram, X, Snapchat, TikTok, Telegram, Discord, WhatsApp hesapları profilde **gizli** tutulur. Sohbetteki bağlantı butonuyla istediğin hesabı, istediğin anda, sadece o kişiyle paylaşırsın.
+- **Karşılıklı kimlik açma:** İki taraf da "hazırım" derse seçtikleri isim ve sosyal medya hesapları aynı anda açılır; tek taraflı ifşa yok.
+- **Cevaba beğeni ve yorum (Hinge):** Profilin tamamı yerine tek bir cevabı, biyografiyi ya da günün sorusunu beğenip yorum yazma. Eşleşirseniz yorum sohbetin ilk mesajı olur.
+- **Günün sorusu:** Her gün yeni soru. Başkalarının cevabını görmek için senin de cevaplaman gerekir.
+- **Günün en uyumlusu, süper beğeni, geri al, günlük beğeni sınırı:** Günde 25 beğeni ve 1 süper beğeni; son kaydırma geri alınabilir.
+- **Arkadaş modu (Bumble BFF):** Flörtten ayrı bir deste; cinsiyet tercihi uygulanmaz.
+- **Süreli eşleşme (Bumble):** 48 saat içinde kimse yazmazsa eşleşme düşer.
+- **Açılış sorusu (Bumble Opening Moves):** Eşleştiğin herkese ilk mesaj olarak giden soru.
+- **Sohbet oyunları:** 2 doğru 1 yalan, Bu mu o mu, Rastgele soru.
+- **Sıra sende (Hinge):** Cevap bekleyen sohbetler ayrı bölümde öne çıkar.
+- **Kötü söz filtresi:** Kırıcı mesajlar göndermeden önce "Emin misin?" diye sorulur; gönderilenler admin panelinde sayılır.
+- **Bildirimler ve uygulama olarak kurulum (PWA):** Yeni eşleşme ve mesajda telefona bildirim; ana ekrana uygulama gibi eklenebilir.
 - **Güvenlik:** Eşleşmeyi kaldırma, engelleme, şikayet etme, hesabı silme.
 - **Admin paneli:** `/admin` adresinde istatistikler, kullanıcı arama, banlama, hesap silme ve şikayet yönetimi.
 - **Tasarım:** Koyu öncelikli premium tema, açık tema desteği (sistem tercihine göre), Inter yazı tipi, SVG ikonlar.
@@ -34,6 +45,7 @@ Tarayıcıda `http://localhost:3000` adresini aç.
 | --- | --- |
 | `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` | Turso veritabanı. Vercel'de zorunlu, yerelde isteğe bağlı. |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | Admin paneli girişi. Şifre boşsa panel kapalıdır. |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Web bildirimleri. Boşsa bildirimler kapalıdır. |
 | `PORT` | Yerel sunucu portu (varsayılan 3000). |
 | `HOST` | Dinlenecek adres. VPS'te `127.0.0.1`. |
 | `COOKIE_SECURE` | HTTPS arkasında `true` (Vercel'de otomatik). |
@@ -54,7 +66,9 @@ vercel.json       Vercel ayarları (API yönlendirmesi, temiz adresler, bölge)
 server/app.js     Express API (kimlik, profil, keşfet, eşleşme, sohbet, admin)
 server/db.js      Veritabanı: Turso / libSQL, yerelde SQLite dosyası
 server/local.js   Yerel geliştirme ve VPS için normal sunucu
-server/meta.js    Bölümler, ilgi alanları, sorular, avatar ve renk listeleri
+server/meta.js    Bölümler, ilgi alanları, sorular, günlük sınırlar, oyun soruları
+server/filter.js  Kötü söz filtresi
+server/push.js    Web bildirimleri (VAPID)
 server/seed.js    Test verisi (canlı veritabanına yazmaz)
 public/           Ön uç (index.html, app.js, admin.html, admin.js, style.css, avatars/, icons/)
 ```

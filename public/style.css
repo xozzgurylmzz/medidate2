@@ -320,3 +320,121 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 .toast.err { border-color: var(--danger); }
 .toast.err .ico { color: var(--danger); }
 .toast.ok .ico { color: var(--ok); }
+
+/* ============================================================
+   v2 özellikleri
+   ============================================================ */
+:root { --super: #38bdf8; --gold: #fbbf24; }
+
+/* keşfet üst çubuğu: mod + günün sorusu */
+.discover-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 2px 0 8px; }
+.discover-head .seg { width: 190px; flex: none; }
+.daily-pill { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--gold) 55%, transparent); background: color-mix(in srgb, var(--gold) 12%, transparent); color: var(--text); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.daily-pill .ico { width: 15px; height: 15px; color: var(--gold); }
+.daily-pill.done { border-color: var(--line); background: var(--surface-2); color: var(--muted); }
+.daily-pill .dot-new { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 25%, transparent); }
+
+/* kart rozetleri */
+.card-hero .pick-ribbon { margin-top: 22px; margin-bottom: -2px; }
+.deck { min-height: 450px; }
+.pick-ribbon { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; background: rgba(255, 255, 255, .92); color: #7c3aed; font-size: 12px; font-weight: 800; letter-spacing: .02em; box-shadow: 0 6px 16px rgba(0, 0, 0, .18); }
+.pick-ribbon .ico { width: 14px; height: 14px; }
+.liked-banner { border-radius: var(--radius-sm); padding: 11px 13px; background: color-mix(in srgb, var(--primary) 12%, transparent); border: 1px solid color-mix(in srgb, var(--primary) 45%, transparent); font-size: 14px; }
+.liked-banner.super { background: color-mix(in srgb, var(--super) 12%, transparent); border-color: color-mix(in srgb, var(--super) 55%, transparent); }
+.liked-banner .lb-title { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; }
+.liked-banner .lb-title .ico { width: 15px; height: 15px; }
+.liked-banner.super .lb-title { color: var(--super); }
+.liked-banner .lb-quote { color: var(--muted); font-size: 12px; margin-top: 6px; }
+.liked-banner .lb-text { margin-top: 2px; font-weight: 600; }
+
+/* cevaba beğeni (Hinge) */
+.likeable { position: relative; }
+.likeable .bio, .likeable.qa { padding-right: 46px; }
+.part-like { position: absolute; right: 8px; bottom: 8px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--surface-solid); color: var(--primary); display: grid; place-items: center; padding: 0; box-shadow: var(--shadow-sm); transition: transform .12s; }
+.part-like:hover { transform: scale(1.08); }
+.part-like .ico { width: 16px; height: 16px; fill: currentColor; }
+.qa.daily { border-color: color-mix(in srgb, var(--gold) 45%, transparent); }
+.qa.daily .q { color: var(--gold); }
+.qa.locked { border-style: dashed; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.qa.locked .q { color: var(--muted); }
+
+/* aksiyon butonları */
+.deck-actions { gap: 12px; }
+.deck-actions .btn-icon.small { width: 46px; height: 46px; color: var(--muted); }
+.deck-actions .btn-icon.small .ico { width: 20px; height: 20px; }
+.deck-actions .btn-icon.super { width: 54px; height: 54px; color: var(--super); border-color: color-mix(in srgb, var(--super) 50%, transparent); }
+.deck-actions .btn-icon.super .ico { width: 24px; height: 24px; fill: currentColor; }
+.deck-actions .btn-icon:disabled { opacity: .35; }
+.limits-line { text-align: center; font-size: 12px; color: var(--muted); margin-top: 8px; }
+.limits-line b { color: var(--text); }
+.swipe-card.fly-up { transform: translate(0, -130%) scale(.9); opacity: 0; }
+.stamp.super { left: 50%; transform: translateX(-50%) rotate(-8deg); color: var(--super); border-color: var(--super); top: 40%; }
+
+/* anahtar (switch) */
+.switch-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.switch-row .txt b { display: block; font-weight: 600; }
+.switch-row .txt span { font-size: 13px; color: var(--muted); }
+.switch { position: relative; width: 50px; height: 30px; flex: none; }
+.switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.switch .slider { position: absolute; inset: 0; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line-strong); transition: background .2s; cursor: pointer; }
+.switch .slider::before { content: ''; position: absolute; width: 22px; height: 22px; left: 3px; top: 3px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .3); transition: transform .2s; }
+.switch input:checked + .slider { background: var(--grad); border-color: transparent; }
+.switch input:checked + .slider::before { transform: translateX(20px); }
+
+/* eşleşmeler: sıra sende, süre, mod */
+.tag-mini { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.tag-mini.turn { color: #fff; background: var(--grad); border: 0; }
+.tag-mini.friend { color: var(--accent-2); border-color: color-mix(in srgb, var(--accent-2) 45%, transparent); }
+.timer { display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 700; color: var(--gold); }
+.timer .ico { width: 12px; height: 12px; }
+.new-row .timer { justify-content: center; }
+.push-card { display: flex; gap: 12px; align-items: center; }
+.push-card .fi { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--grad); color: #fff; flex: none; }
+
+/* sohbet şeritleri */
+.chat-strip { padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--surface); font-size: 13px; display: flex; gap: 10px; align-items: center; }
+.chat-strip .ico { color: var(--gold); flex: none; }
+.chat-strip .grow b { font-weight: 600; }
+.chat-strip.reveal .ico { color: var(--accent); }
+.chat-strip.expire .ico { color: var(--gold); }
+.daily-answers { display: grid; gap: 4px; margin-top: 4px; }
+.daily-answers div { color: var(--text); }
+.daily-answers span { color: var(--muted); }
+
+/* sohbet kartları */
+.msg[data-mid] { scroll-margin: 60px; }
+.msg.card { white-space: normal; background: var(--surface-solid); border: 1px solid var(--line-strong); color: var(--text); box-shadow: none; max-width: 86%; }
+.msg.card.mine { border-color: color-mix(in srgb, var(--primary) 50%, transparent); background: color-mix(in srgb, var(--primary) 10%, var(--surface-solid)); }
+.msg.card .title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.msg.card .title .ico { width: 14px; height: 14px; }
+.msg.card .q { font-weight: 700; font-size: 15px; }
+.msg.card .quote { font-size: 12px; color: var(--muted); border-left: 3px solid var(--primary); padding-left: 8px; margin-bottom: 6px; }
+.msg.card .actions-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.game-opts { display: grid; gap: 6px; margin-top: 8px; }
+.game-opt { text-align: left; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--surface-2); font-weight: 500; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+button.game-opt:hover { border-color: var(--primary); }
+.game-opt.lie { border-color: color-mix(in srgb, #fb7185 60%, transparent); }
+.game-opt.picked { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 14%, transparent); }
+.game-opt .tag-mini { flex: none; }
+.tot-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.tot-opts .game-opt { justify-content: center; text-align: center; flex-direction: column; font-weight: 700; }
+.game-result { margin-top: 8px; font-weight: 700; font-size: 14px; }
+.game-result.good { color: #4ade80; }
+.game-result.meh { color: var(--muted); }
+.msg.game-line { align-self: center; background: transparent; color: var(--muted); font-size: 12px; padding: 2px 0; text-align: center; max-width: 90%; }
+.reveal-card { align-self: stretch; max-width: 100%; background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 22%, var(--surface-solid)), var(--surface-solid)); border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent); border-radius: 20px; padding: 16px; white-space: normal; }
+.reveal-card h4 { margin: 0 0 10px; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+.reveal-people { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.reveal-person { background: var(--surface-2); border-radius: 14px; padding: 10px; display: grid; gap: 6px; }
+.reveal-person .who { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.reveal-person .nm { font-weight: 800; font-size: 15px; }
+.reveal-person .soc { display: flex; align-items: center; gap: 6px; font-size: 13px; word-break: break-all; }
+.check-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); font-weight: 500; cursor: pointer; }
+.check-row input { width: 18px; height: 18px; accent-color: var(--primary); }
+.radio-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+.radio-row label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.radio-row input[type=radio] { accent-color: #fb7185; width: 16px; height: 16px; }
+.action-list .btn { justify-content: flex-start; gap: 12px; }
+.action-list .btn .ico { color: var(--primary); }
+.action-list .btn small { display: block; color: var(--muted); font-weight: 400; font-size: 12px; }
+@media (max-width: 380px) { .reveal-people { grid-template-columns: 1fr; } .discover-head .seg { width: 160px; } }

@@ -235,7 +235,7 @@
 
   async function showUser(id) {
     try {
-      const { user: u, reports, messagesSent, reportsMade } = await api(`/users/${id}`);
+      const { user: u, reports, messagesSent, flaggedMessages, reportsMade } = await api(`/users/${id}`);
       const rows = [
         ['Kullanıcı adı', '@' + u.username], ['Takma ad', u.nickname],
         ['Ad soyad', [u.first_name, u.last_name].filter(Boolean).join(' ') || '—'],
@@ -243,6 +243,7 @@
         ['Yaş', u.age || '—'], ['Bölüm', u.department || '—'], ['Niyet', INTENT[u.intent] || '—'],
         ['Kayıt', fmtDate(u.created_at)], ['Son görülme', u.online ? 'Şu an çevrimiçi' : fmtDate(u.last_seen)],
         ['Aktif eşleşme', u.match_count], ['Gönderdiği mesaj', messagesSent],
+        ['Uyarıya rağmen gönderilen', `${flaggedMessages ?? 0} mesaj`], ['Arkadaş modu', u.friend_mode ? 'Açık' : 'Kapalı'],
         ['Hakkında şikayet', u.report_count], ['Yaptığı şikayet', reportsMade],
       ];
       const el = openModal(`
