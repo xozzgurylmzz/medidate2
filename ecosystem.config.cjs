@@ -1,13 +1,13 @@
 // PM2 yapılandırması: sunucuda `pm2 start ecosystem.config.cjs`
-// NOT: instances 1 kalmalı. Çevrimiçi durumu, istek sınırlama ve canlı sohbet
-// tek süreç içinde tutuluyor; birden fazla kopya çalıştırırsan sohbet bozulur.
+// NOT: instances 1 kalmalı. İstek sınırlama sayaçları
+// süreç içinde tutuluyor.
 module.exports = {
   apps: [
     {
       name: 'medipoldate',
-      script: 'server/index.js',
+      script: 'server/local.js',
       cwd: __dirname,
-      node_args: '--disable-warning=ExperimentalWarning --env-file=.env',
+      node_args: '--env-file=.env',
       instances: 1,
       exec_mode: 'fork',
       autorestart: true,

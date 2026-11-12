@@ -9,7 +9,7 @@ Ankara Medipol Üniversitesi öğrencilerine özel, **fotoğrafsız ve anonim** 
 - **Zorunlu olan tek alan cinsiyet.** Ad, soyad, yaş, bölüm isteğe bağlıdır.
 - **Eşleştirme sinyalleri:** "Ne arıyorsun?" (ciddi / flört / arkadaşlık), serbest "Hakkında" metni, 60+ ilgi alanı etiketi ve Tinder tarzı soru-cevaplar. Keşfet akışı ortak ilgi alanı, aynı niyet ve aynı bölüme göre sıralanır.
 - **Kaydır-beğen:** Kartı sağa/sola sürükle ya da ✕ / ♥ butonlarını kullan. Karşılıklı beğenide eşleşme ekranı çıkar.
-- **Gerçek zamanlı sohbet:** Socket.io ile anında mesaj, "yazıyor…" göstergesi, çevrimiçi durumu, okunmamış sayacı.
+- **Canlı sohbet:** Birkaç saniyelik yoklama (polling) ile yeni mesajlar, "yazıyor…" göstergesi, çevrimiçi durumu, okunmamış sayacı. Vercel gibi sunucusuz ortamlarda da çalışır.
 - **Sosyal medya kontrol sende:** Instagram, X, Snapchat, TikTok, Telegram, Discord, WhatsApp hesapları profilde **gizli** tutulur. Sohbetteki bağlantı butonuyla istediğin hesabı, istediğin anda, sadece o kişiyle paylaşırsın.
 - **Güvenlik:** Eşleşmeyi kaldırma, engelleme, şikayet etme, hesabı silme.
 - **Admin paneli:** `/admin` adresinde istatistikler, kullanıcı arama, banlama, hesap silme ve şikayet yönetimi.
@@ -17,7 +17,7 @@ Ankara Medipol Üniversitesi öğrencilerine özel, **fotoğrafsız ve anonim** 
 
 ## Kurulum
 
-Node.js 22.13+ gerekir (yerleşik SQLite kullanılır, ek veritabanı kurulumu yoktur).
+Node.js 20+ gerekir. Yerelde veritabanı kurmana gerek yok; veriler `data/medipoldate.sqlite` dosyasına yazılır.
 
 ```bash
 npm install
@@ -32,11 +32,12 @@ Tarayıcıda `http://localhost:3000` adresini aç.
 
 | Değişken | Açıklama |
 | --- | --- |
-| `PORT` | Sunucu portu (varsayılan 3000). |
-| `HOST` | Dinlenecek adres. Sunucuda `127.0.0.1`. |
-| `COOKIE_SECURE` | HTTPS arkasında `true` yapın. |
-| `TRUST_PROXY` | Nginx arkasında `true` yapın. |
+| `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` | Turso veritabanı. Vercel'de zorunlu, yerelde isteğe bağlı. |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | Admin paneli girişi. Şifre boşsa panel kapalıdır. |
+| `PORT` | Yerel sunucu portu (varsayılan 3000). |
+| `HOST` | Dinlenecek adres. VPS'te `127.0.0.1`. |
+| `COOKIE_SECURE` | HTTPS arkasında `true` (Vercel'de otomatik). |
+| `TRUST_PROXY` | Nginx arkasında `true` (Vercel'de otomatik). |
 
 ## Görseller ve lisanslar
 
@@ -48,13 +49,17 @@ Tarayıcıda `http://localhost:3000` adresini aç.
 ## Yapı
 
 ```
-server/index.js   Express API + Socket.io (kimlik, profil, keşfet, eşleşme, sohbet)
-server/db.js      SQLite şeması (data/medipoldate.sqlite)
+api/index.js      Vercel sunucusuz fonksiyonu (server/app.js'i çalıştırır)
+vercel.json       Vercel ayarları (API yönlendirmesi, temiz adresler, bölge)
+server/app.js     Express API (kimlik, profil, keşfet, eşleşme, sohbet, admin)
+server/db.js      Veritabanı: Turso / libSQL, yerelde SQLite dosyası
+server/local.js   Yerel geliştirme ve VPS için normal sunucu
 server/meta.js    Bölümler, ilgi alanları, sorular, avatar ve renk listeleri
-server/seed.js    Test verisi
-public/           Tek sayfalık ön uç (index.html, app.js, style.css, avatars/, icons/)
+server/seed.js    Test verisi (canlı veritabanına yazmaz)
+public/           Ön uç (index.html, app.js, admin.html, admin.js, style.css, avatars/, icons/)
 ```
 
 ## Yayına alma
 
-Sunucuya kurulum (VPS, Nginx, HTTPS, PM2, yedekleme, admin paneli) adım adım [DEPLOY.md](DEPLOY.md) dosyasında anlatılıyor.
+- **Vercel + Turso (önerilen):** [DEPLOY.md](DEPLOY.md)
+- **Kendi Linux sunucun (VPS):** [DEPLOY-VPS.md](DEPLOY-VPS.md)

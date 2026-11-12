@@ -37,7 +37,7 @@
 
   const state = {
     meta: null, user: null, view: null, authMode: 'login',
-    candidates: [], discoverLoading: false, matches: [], chat: null, socket: null, typingTimer: null,
+    candidates: [], discoverLoading: false, matches: [], chat: null, typingSentAt: 0,
   };
 
   // ------------------------------------------------------------ API
@@ -50,7 +50,7 @@
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      if (res.status === 401 && state.user) { state.user = null; showView('auth'); }
+      if (res.status === 401 && state.user) { state.user = null; stopPolling(); closeModal(); renderTopbar(); showView('auth'); }
       throw new Error(data.error || 'Bir şeyler ters gitti.');
     }
     return data;
@@ -179,7 +179,7 @@
 
   async function onLoggedIn(user) {
     state.user = user;
-    connectSocket();
+    startPolling();
     renderTopbar();
     if (!user.profile_done) { showView('profile'); toast('Hoş geldin! Önce anonim profilini oluştur.'); }
     else { await loadMatches(); showView('discover'); }
@@ -192,7 +192,7 @@
   async function logout() {
     try { await api('/auth/logout', { method: 'POST', body: {} }); } catch { /* yok say */ }
     state.user = null; state.matches = []; state.candidates = []; state.chat = null;
-    if (state.socket) { state.socket.disconnect(); state.socket = null; }
+    stopPolling();
     state.authMode = 'login'; renderTopbar(); showView('auth');
   }
 
@@ -339,7 +339,7 @@
     const lo = $('#p-logout', v); if (lo) lo.onclick = logout;
     const del = $('#p-delete', v); if (del) del.onclick = async () => {
       if (!await confirmSheet('Hesabı sil', 'Profilin, eşleşmelerin ve mesajların kalıcı olarak silinir. Bu işlem geri alınamaz.', 'Evet, sil', true)) return;
-      try { await api('/me', { method: 'DELETE' }); toast('Hesabın silindi.'); state.user = null; if (state.socket) state.socket.disconnect(); state.socket = null; renderTopbar(); showView('auth'); }
+      try { await api('/me', { method: 'DELETE' }); toast('Hesabın silindi.'); state.user = null; stopPolling(); renderTopbar(); showView('auth'); }
       catch (ex) { toast(ex.message, 'err'); }
     };
   }
@@ -602,7 +602,14 @@
     };
     const input = $('#c-input', v);
     const autosize = () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 120) + 'px'; };
-    input.oninput = () => { autosize(); if (state.socket) state.socket.emit('typing', c.matchId); };
+    input.oninput = () => {
+      autosize();
+      // "yazıyor…" bilgisini en fazla 2,5 sn'de bir gönder
+      if (input.value.trim() && Date.now() - state.typingSentAt > 2500) {
+        state.typingSentAt = Date.now();
+        api(`/matches/${c.matchId}/typing`, { body: {} }).catch(() => {});
+      }
+    };
     input.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
     $('#c-send', v).onclick = sendMessage;
     $('#c-share', v).onclick = openShareSheet;
@@ -638,8 +645,11 @@
     const c = state.chat; const input = $('#c-input'); if (!c || !input) return;
     const body = input.value.trim(); if (!body) return;
     input.value = ''; input.style.height = 'auto';
-    try { await api(`/matches/${c.matchId}/messages`, { body: { body } }); }
-    catch (ex) { toast(ex.message, 'err'); input.value = body; }
+    state.typingSentAt = 0;
+    try {
+      const r = await api(`/matches/${c.matchId}/messages`, { body: { body } });
+      receiveMessage(c.matchId, r.message);
+    } catch (ex) { toast(ex.message, 'err'); input.value = body; }
   }
 
   function openShareSheet() {
@@ -666,54 +676,107 @@
       if (b.dataset.new) { platform = $('#sh-platform', el).value; handle = $('#sh-handle', el).value.trim(); if (!handle) return toast('Kullanıcı adını yaz.'); }
       if (!platform) return;
       try {
-        await api(`/matches/${c.matchId}/share`, { body: { platform, handle } });
+        const r = await api(`/matches/${c.matchId}/share`, { body: { platform, handle } });
+        receiveMessage(c.matchId, r.message);
         if (handle) { state.user.socials = { ...(state.user.socials || {}), [platform]: handle.replace(/^@/, '') }; }
         closeModal(); toast('Paylaşıldı.', 'ok');
       } catch (ex) { toast(ex.message, 'err'); }
     };
   }
 
-  // ------------------------------------------------------------ socket.io
-  function connectSocket() {
-    if (state.socket) return;
-    const s = io({ withCredentials: true });
-    state.socket = s;
-    s.on('message', ({ matchId, message }) => {
-      const c = state.chat;
-      if (c && c.matchId === matchId) {
-        c.messages.push(message);
-        if (message.type === 'social') { let p = {}; try { p = JSON.parse(message.body); } catch { /* yok */ } (c.shared[message.sender_id] ||= {})[p.platform] = p.handle; renderChat(); scrollChatBottom(); }
-        else appendMessage(message);
-        const t = $('#c-typing'); if (t) t.textContent = '';
-        if (message.sender_id !== state.user.id) api(`/matches/${matchId}/read`, { body: {} }).catch(() => {});
-      } else if (message.sender_id !== state.user.id) {
-        const m = state.matches.find((x) => x.matchId === matchId);
-        if (m) { m.unread = (m.unread || 0) + 1; updateUnreadBadge(); if (state.view === 'matches') renderMatches(); }
+  // ------------------------------------------------------------ canlı güncellemeler (yoklama)
+  // Vercel gibi sunucusuz ortamlarda kalıcı bağlantı (WebSocket) olmadığı için
+  // istemci birkaç saniyede bir /api/updates'e "yeni bir şey var mı?" diye sorar.
+  const poll = { timer: null, cursor: null, known: null, running: false };
+
+  function pollDelay() {
+    if (document.hidden) return 30000;
+    return state.view === 'chat' ? 2500 : 7000;
+  }
+  function schedulePoll(ms) { clearTimeout(poll.timer); poll.timer = setTimeout(pollTick, ms); }
+  function startPolling() { poll.cursor = null; poll.known = null; schedulePoll(0); }
+  function stopPolling() { clearTimeout(poll.timer); poll.timer = null; poll.cursor = null; poll.known = null; }
+
+  async function pollTick() {
+    if (!state.user || poll.running) return;
+    poll.running = true;
+    try {
+      const qs = new URLSearchParams();
+      if (poll.cursor !== null) qs.set('after', poll.cursor);
+      if (state.chat && !state.chat.loading) qs.set('chat', state.chat.matchId);
+      handleUpdates(await api('/updates?' + qs));
+    } catch { /* ağ hatası: bir sonraki turda tekrar dene */ }
+    finally {
+      poll.running = false;
+      if (state.user) schedulePoll(pollDelay());
+    }
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && state.user) schedulePoll(300); });
+
+  function handleUpdates(r) {
+    const first = poll.cursor === null;
+    const current = new Set(r.matchIds);
+    if (!first) {
+      for (const msg of r.messages) receiveMessage(msg.match_id, msg, { fromPoll: true });
+      // kaldırılan eşleşmeler (karşı taraf kaldırdı / engelledi / banlandı)
+      const removed = [...poll.known].filter((id) => !current.has(id));
+      if (removed.length) {
+        if (state.chat && removed.includes(state.chat.matchId)) { state.chat = null; toast('Bu eşleşme artık aktif değil.'); showView('matches'); }
         else loadMatches().then(() => { if (state.view === 'matches') renderMatches(); });
-        toast('Yeni mesaj');
       }
-    });
-    s.on('match', async (m) => { await loadMatches(); showMatchModal(m); });
-    s.on('unmatch', ({ matchId }) => {
-      if (state.chat && state.chat.matchId === matchId) { state.chat = null; toast('Eşleşme kaldırıldı.'); showView('matches'); }
-      else loadMatches().then(() => { if (state.view === 'matches') renderMatches(); });
-    });
-    s.on('typing', ({ matchId }) => {
-      if (!state.chat || state.chat.matchId !== matchId) return;
-      const t = $('#c-typing'); if (!t) return; t.textContent = 'yazıyor…';
-      clearTimeout(state.typingTimer); state.typingTimer = setTimeout(() => { t.textContent = ''; }, 1800);
-    });
-    s.on('presence', ({ userId, online }) => {
-      const m = state.matches.find((x) => x.user.id === userId); if (m) m.user.online = online;
-      if (state.chat && state.chat.other && state.chat.other.id === userId) { state.chat.other.online = online; const st = $('#c-status'); if (st) st.innerHTML = online ? '<span class="dot"></span> Çevrimiçi' : 'Son görülme az önce'; }
-      else if (state.view === 'matches') renderMatches();
-    });
+    }
+    poll.known = current;
+    poll.cursor = Math.max(poll.cursor ?? 0, r.cursor);
+
+    // açık sohbet: çevrimiçi ve "yazıyor…" durumu
+    const c = state.chat;
+    if (r.chat && c && c.matchId === r.chat.matchId && c.other) {
+      c.other.online = r.chat.online; c.other.last_seen = r.chat.last_seen;
+      const st = $('#c-status');
+      if (st) st.innerHTML = r.chat.online ? '<span class="dot"></span> Çevrimiçi' : r.chat.last_seen ? 'Son görülme ' + fmtTime(r.chat.last_seen) : '';
+      const t = $('#c-typing'); if (t) t.textContent = r.chat.typing ? 'yazıyor…' : '';
+    }
+  }
+
+  /** Yeni bir mesajı (kendi gönderdiğimiz ya da yoklamadan gelen) ekrana işler; aynı mesajı iki kez eklemez. */
+  function receiveMessage(matchId, message, { fromPoll = false } = {}) {
+    const mine = message.sender_id === state.user.id;
+    const c = state.chat;
+    if (c && c.matchId === matchId && !c.loading) {
+      if (c.messages.some((m) => m.id === message.id)) return;
+      c.messages.push(message);
+      if (message.type === 'social') {
+        let p = {}; try { p = JSON.parse(message.body); } catch { /* yok */ }
+        (c.shared[message.sender_id] ||= {})[p.platform] = p.handle;
+        renderChat(); scrollChatBottom();
+      } else appendMessage(message);
+      if (!mine) { const t = $('#c-typing'); if (t) t.textContent = ''; api(`/matches/${matchId}/read`, { body: {} }).catch(() => {}); }
+      return;
+    }
+    if (!fromPoll || mine) return;
+    const m = state.matches.find((x) => x.matchId === matchId);
+    if (message.type === 'system') {
+      // karşı taraf beğenimize karşılık verdi: yeni eşleşme
+      loadMatches().then(() => {
+        const nm = state.matches.find((x) => x.matchId === matchId);
+        if (nm) showMatchModal({ matchId, user: nm.user });
+        if (state.view === 'matches') renderMatches();
+      });
+      return;
+    }
+    if (m) { m.unread = (m.unread || 0) + 1; updateUnreadBadge(); if (state.view === 'matches') renderMatches(); }
+    else loadMatches().then(() => { if (state.view === 'matches') renderMatches(); });
+    toast('Yeni mesaj');
   }
 
   // ------------------------------------------------------------ başlat
   (async () => {
     try { state.meta = await api('/meta'); }
-    catch { document.body.innerHTML = '<p style="padding:24px">Sunucuya ulaşılamıyor.</p>'; return; }
+    catch (ex) {
+      document.body.innerHTML = `<div style="max-width:420px;margin:15vh auto;padding:24px;font-family:Inter,sans-serif;color:#f5f4fa;text-align:center">
+        <h2 style="margin:0 0 8px">Sunucuya ulaşılamıyor</h2><p style="color:#9a98b0;margin:0">${esc(ex.message)}</p></div>`;
+      return;
+    }
     try {
       const r = await api('/me');
       await onLoggedIn(r.user);
